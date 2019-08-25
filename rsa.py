@@ -25,7 +25,6 @@ def create_rdm(X, metric, name):
     cmap = cmap[1:,:]
     ax = sns.heatmap(RDM, cmap=cmap.tolist())
     plt.savefig(name+'RDM.png')
-    plt.show()                  # TODO: maybe not show figure just save it
     return RDM
 
 # Correlate a list of EEG RDM's with a model RDM, find the maximal correlation and report
@@ -46,7 +45,7 @@ def find_maximal_correlation(EEG_RDM_dict, model_RDM):
     time_window_dist_df = pd.DataFrame(dist_per_time_window, columns=['time_window','Distance'])
 
     # if metric is similarity instead of distance (dissimilarity), change ascending to True
-    time_window_dist_df_sorted = time_window_dist_df.sort_values(ascending=False, by='Distance')
+    time_window_dist_df_sorted = time_window_dist_df.sort_values(by='Distance')
 
     return time_window_dist_df_sorted.iloc[0], time_window_dist_df
 
@@ -82,4 +81,17 @@ if __name__ == '__main__':
                android_drink, android_grasp, android_handwave, android_talk, android_nudge, android_paper, android_turn, android_wipe,
                human_drink, human_grasp, human_handwave, human_talk, human_nudge, human_paper, human_turn, human_wipe]
 
-    print(type(create_rdm(stimuli, 'hamming', 'Agent')))
+    stimuli = numpy.asarray(stimuli)
+    model_RDM = create_rdm(stimuli, 'hamming', 'Agent')
+
+    EEG_rand_dict = {}
+
+    # Simulating an EEG rdm list with random RDMs
+    for i in range(1,10):
+        EEG_rand_dict[str(i)] = (numpy.random.rand(24, 24))
+
+    # Putting the model RDM to show that it will be returned as most similar
+    EEG_rand_dict['11'] = model_RDM
+
+    most_similar, time_window_dist_df = find_maximal_correlation(EEG_rand_dict, model_RDM)
+    print(most_similar)
