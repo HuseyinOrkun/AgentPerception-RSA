@@ -3,10 +3,12 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 import numpy
 import seaborn as sns
-
+import pandas as pd
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
 # metric: A difference metric to compare activation patterns from {'hamming', 'mahalanobis'}
 # TODO: to add more distances, add args and kwargs to signature.
+
+
 def create_rdm(X, metric, name):
 
     # Calculate distance between eah row of X
@@ -23,8 +25,30 @@ def create_rdm(X, metric, name):
     cmap = cmap[1:,:]
     ax = sns.heatmap(RDM, cmap=cmap.tolist())
     plt.savefig(name+'RDM.png')
-    plt.show()
+    plt.show()                  # TODO: maybe not show figure just save it
     return RDM
+
+# Correlate a list of EEG RDM's with a model RDM, find the maximal correlation and report
+# Will use sena's function to correlate an EEG RDM and a model RDM
+# Input: A dictionary of EEG RDMs as time windows as keys and RDMs as values and a model RDM
+# Output: Returns a pandas Series that contains the time window and
+# biggest distance and a pandas dataframe containing all distances
+
+
+def find_maximal_correlation(EEG_RDM_dict, model_RDM):
+
+    dist_per_time_window = []
+    for time_window, EEG_RDM in EEG_RDM_dict.items():
+
+        # TODO change this function to Sena's function (if it is similarity change here accordingly)
+        dist = numpy.linalg.norm(EEG_RDM - model_RDM)
+        dist_per_time_window.append([time_window,dist])
+    time_window_dist_df = pd.DataFrame(dist_per_time_window, columns=['time_window','Distance'])
+
+    # if metric is similarity instead of distance (dissimilarity), change ascending to True
+    time_window_dist_df_sorted = time_window_dist_df.sort_values(ascending=False, by='Distance')
+
+    return time_window_dist_df_sorted.iloc[0], time_window_dist_df
 
 if __name__ == '__main__':
     robot_drink = [1,0,0]
@@ -34,7 +58,7 @@ if __name__ == '__main__':
     robot_nudge = [1,0,0]
     robot_paper = [1,0,0]
     robot_turn = [1,0,0]
-    robot_wipe = [1,0,0,]
+    robot_wipe = [1,0,0]
 
     android_drink = [0,1,0]
     android_grasp = [0,1,0]
