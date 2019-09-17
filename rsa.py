@@ -1,7 +1,7 @@
 from scipy.spatial.distance import pdist,squareform
-import scipy.io as sio
-import matplotlib.pyplot as plt
+from scipy import io, stats
 import numpy as np
+import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 from scipy import stats
@@ -22,7 +22,8 @@ def create_rdm(X, metric, name):
     np.save(name+'RDM', RDM)
     fig, ax = plt.subplots()
 
-    colorData = sio.loadmat('colorData.mat')
+
+    colorData = io.loadmat('colorData.mat')
     cmap = np.flipud(colorData['Blues9'])
     cmap = cmap[1:,:]
     ax = sns.heatmap(RDM, cmap=cmap.tolist())
@@ -49,14 +50,13 @@ def find_maximal_correlation(EEG_RDM_dict, model_RDM):
 
     return time_window_dist_df_sorted.iloc[0], time_window_dist_df
 
-
+  
 # Should we really concat upper and lower triangles
 # the correlation doubles
 def correlate_models(model_rdm, eeg_rdm):
 
     # upper triangle. k=1 excludes the diagonal elements.
     xu, yu = np.triu_indices_from(model_rdm, k=1)
-
     # lower triangle
     xl, yl = np.tril_indices_from(model_rdm, k=-1)  # Careful, here the offset is -1
 
@@ -128,3 +128,14 @@ if __name__ == '__main__':
 
     most_similar, time_window_dist_df = find_maximal_correlation(EEG_rand_dict, model_RDM)
     print(most_similar)
+
+    print(type(create_rdm(stimuli, 'hamming', 'Agent')))
+
+    # correlate_models test
+    model_rdm = io.loadmat('AgentRDM.mat')['AgentRDM']
+    try:
+        eeg_rdm = io.loadmat('EEG_RDM.mat')['EEG_RDM']
+    except:
+        eeg_rdm = np.ones(shape=(24, 24))
+
+    print(correlate_models(model_rdm, eeg_rdm))
