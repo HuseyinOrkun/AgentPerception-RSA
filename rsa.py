@@ -1,7 +1,7 @@
 from scipy.spatial.distance import pdist,squareform
-import scipy.io as sio
+from scipy import io, stats
+import numpy as np
 import matplotlib.pyplot as plt
-import numpy
 import seaborn as sns
 
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
@@ -15,16 +15,47 @@ def create_rdm(X, metric, name):
     # The metric dist(u=X[i], v=X[j]) is computed and stored in entry ij of RDM
     RDM = pdist(X, metric)
     RDM = squareform(RDM)
-    numpy.save(name+'RDM', RDM)
+    np.save(name+'RDM', RDM)
     fig, ax = plt.subplots()
 
-    colorData = sio.loadmat('colorData.mat')
-    cmap = numpy.flipud(colorData['Blues9'])
+    colorData = io.loadmat('colorData.mat')
+    cmap = np.flipud(colorData['Blues9'])
     cmap = cmap[1:,:]
     ax = sns.heatmap(RDM, cmap=cmap.tolist())
     plt.savefig(name+'RDM.png')
     plt.show()
     return RDM
+
+# Should we really concat upper and lower triangles
+# the correlation doubles
+def correlate_models(model_rdm, eeg_rdm):
+
+    # upper triangle. k=1 excludes the diagonal elements.
+    xu, yu = np.triu_indices_from(model_rdm, k=1)
+    # lower triangle
+    xl, yl = np.tril_indices_from(model_rdm, k=-1)  # Careful, here the offset is -1
+
+    # combine
+    x = np.concatenate((xl, xu))
+    y = np.concatenate((yl, yu))
+    off_model_rdm = model_rdm[x,y]
+
+    # upper triangle. k=1 excludes the diagonal elements.
+    xu, yu = np.triu_indices_from(eeg_rdm, k=1)
+    # lower triangle
+    xl, yl = np.tril_indices_from(eeg_rdm, k=-1)  # Careful, here the offset is -1
+
+    # combine
+    x = np.concatenate((xl, xu))
+    y = np.concatenate((yl, yu))
+    off_eeg_rdm = eeg_rdm[x,y]
+
+    # Kendall’s tau is a measure of the correspondence between two rankings. Values
+    # close to 1 indicate strong agreement, values close to -1 indicate strong disagreement.
+    # The two-sided p-value for a hypothesis test whose null hypothesis is an absence of
+    # association, i.e. tau = 0.
+    kendall_tau, kendall_p_value = stats.kendalltau(off_model_rdm, off_eeg_rdm)
+    return kendall_tau, kendall_p_value
 
 if __name__ == '__main__':
     robot_drink = [1,0,0]
@@ -59,3 +90,12 @@ if __name__ == '__main__':
                human_drink, human_grasp, human_handwave, human_talk, human_nudge, human_paper, human_turn, human_wipe]
 
     print(type(create_rdm(stimuli, 'hamming', 'Agent')))
+
+    # correlate_models test
+    model_rdm = io.loadmat('AgentRDM.mat')['AgentRDM']
+    try:
+        eeg_rdm = io.loadmat('EEG_RDM.mat')['EEG_RDM']
+    except:
+        eeg_rdm = np.ones(shape=(24, 24))
+
+    print(correlate_models(model_rdm, eeg_rdm))
