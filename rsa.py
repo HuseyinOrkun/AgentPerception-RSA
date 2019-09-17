@@ -52,8 +52,6 @@ def find_maximal_correlation(EEG_RDM_dict, model_RDM):
     return time_window_dist_df_sorted.iloc[0], time_window_dist_df
 
 
-
-
 if __name__ == '__main__':
     robot_drink = [1,0,0]
     robot_grasp = [1,0,0]
