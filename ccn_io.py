@@ -1,6 +1,6 @@
 import os
 import scipy.io as sio
-import numpy
+import numpy as np
 
 
 # build_EEG_data takes EEG root path and loads EEG data
@@ -47,30 +47,56 @@ def build_EEG_data(EEG_root_path):
                 loaded_file = sio.loadmat(filename)
                 index = [i for i, s in enumerate(list(loaded_file.keys())) if 'subj' in s]
                 if not index:
-                    class_type = list(loaded_file.keys())[-1] + ''
+                    stimuli_type = list(loaded_file.keys())[-1] + ''
                 else:
-                    class_type = list(loaded_file.keys())[index[0]]
+                    stimuli_type = list(loaded_file.keys())[index[0]]
 
                 # subj_agent_action is a subject's eeg data for an action agent combination
-                subj_agent_action = numpy.asarray(loaded_file[class_type])  # Check its size
+                subj_agent_action = np.asarray(loaded_file[stimuli_type])  # Check its size
                 print("Shape of subj_agent_Action: " + str(subj_agent_action.shape)) # For debug purposes, remove later
 
                 # If there is no key with the particular agent_action create a list for it, else
-                if class_type in agent_action_dict.keys():
-                    agent_action_dict[class_type].append(subj_agent_action)
+                if stimuli_type in agent_action_dict.keys():
+                    agent_action_dict[stimuli_type].append(subj_agent_action)
                 else:
-                    agent_action_dict[class_type] = []
+                    agent_action_dict[stimuli_type] = []
                     
     # Traverse agent_action_dict, and for each value concat and average on 3rd dimension
     for agent_action, agent_action_eeg in agent_action_dict.items():
 
         # Concatanate trial and subjects
-        agent_action_concat = numpy.concatenate(agent_action_eeg,2)
+        agent_action_concat = np.concatenate(agent_action_eeg,2)
 
         # Average on trials and subjects
-        agent_action_dict[agent_action] = numpy.mean(agent_action_concat,2)
+        agent_action_dict[agent_action] = np.mean(agent_action_concat,2)
 
     return agent_action_dict
+
+def construct_time_window_representations(agent_action_dict, time_window_size):
+
+    # Check if total number of timepoints is divisable by time_window_size
+    n_timepts = len(next(iter(agent_action_dict.values()))[0])
+    if n_timepts % time_window_size != 0:
+        raise ValueError('Total number of timepoints is not divisable by given time_window_size')
+
+
+    time_window_representations = dict()
+    for v in agent_action_dict.values():
+        key = None
+        for start in range(0, n_timepts, time_window_size):
+            end = start+time_window_size
+            key = "(" + str(start) + ", " + str(end) + ")"
+            if key not in time_window_representations.keys():
+                time_window_representations[key] = [v[:, start:end].flatten()]
+            else:
+                time_window_representations[key].append(v[:, start:end].flatten())
+        time_window_representations[key] = np.asarray(time_window_representations[key])
+
+    return time_window_representations
+
+
+
+
 
 if __name__ == '__main__':
     test_dict = build_EEG_data('/Users/huseyinelmas/Desktop/data/still/')
