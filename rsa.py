@@ -9,7 +9,7 @@ from scipy import stats
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
 # metric: A difference metric to compare activation patterns from {'hamming', 'mahalanobis'}
 # TODO: to add more distances, add args and kwargs to signature.
-
+# TODO: check pdist for its ability to compare matrices
 
 def create_rdm(X, metric, name):
 
@@ -27,7 +27,7 @@ def create_rdm(X, metric, name):
     cmap = np.flipud(colorData['Blues9'])
     cmap = cmap[1:,:]
     ax = sns.heatmap(RDM, cmap=cmap.tolist())
-    plt.savefig(name+'RDM.png')
+    plt.savefig(name+'-RDM.png')
     return RDM
 
 # Correlate a list of EEG RDM's with a model RDM, find the maximal correlation and report
