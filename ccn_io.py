@@ -65,7 +65,7 @@ def build_EEG_data(EEG_root_path):
     for agent_action, agent_action_eeg in agent_action_dict.items():
 
         # Concatanate trial and subjects
-        agent_action_concat = numpy.concatenate(agent_action_eeg,2) # Check if this is trial
+        agent_action_concat = numpy.concatenate(agent_action_eeg,2)
 
         # Average on trials and subjects
         agent_action_dict[agent_action] = numpy.mean(agent_action_concat,2)
