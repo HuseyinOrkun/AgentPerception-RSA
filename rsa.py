@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-
+from scipy import stats
 
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
 # metric: A difference metric to compare activation patterns from {'hamming', 'mahalanobis'}
@@ -21,6 +21,7 @@ def create_rdm(X, metric, name):
     RDM = squareform(RDM)
     np.save(name+'RDM', RDM)
     fig, ax = plt.subplots()
+
 
     colorData = io.loadmat('colorData.mat')
     cmap = np.flipud(colorData['Blues9'])
@@ -40,18 +41,16 @@ def find_maximal_correlation(EEG_RDM_dict, model_RDM):
 
     dist_per_time_window = []
     for time_window, EEG_RDM in EEG_RDM_dict.items():
+        kendall_tau, kendall_p_value = correlate_models(model_RDM, EEG_RDM)
+        dist_per_time_window.append([time_window, kendall_tau, kendall_p_value])
+    time_window_dist_df = pd.DataFrame(dist_per_time_window, columns=['time_window','kendall_tau','kendall_p_value'])
 
-        # TODO change this function to Sena's function (if it is similarity change here accordingly)
-        dist = numpy.linalg.norm(EEG_RDM - model_RDM)
-        dist_per_time_window.append([time_window,dist])
-    time_window_dist_df = pd.DataFrame(dist_per_time_window, columns=['time_window','Distance'])
-
-    # if metric is similarity instead of distance (dissimilarity), change ascending to True
-    time_window_dist_df_sorted = time_window_dist_df.sort_values(by='Distance')
+    # if metric is similarity instead of distance (dissimilarity), change ascending to False
+    time_window_dist_df_sorted = time_window_dist_df.sort_values(by='kendall_tau', ascending=False)
 
     return time_window_dist_df_sorted.iloc[0], time_window_dist_df
 
-
+  
 # Should we really concat upper and lower triangles
 # the correlation doubles
 def correlate_models(model_rdm, eeg_rdm):
@@ -115,6 +114,21 @@ if __name__ == '__main__':
                android_drink, android_grasp, android_handwave, android_talk, android_nudge, android_paper, android_turn, android_wipe,
                human_drink, human_grasp, human_handwave, human_talk, human_nudge, human_paper, human_turn, human_wipe]
 
+    stimuli = np.asarray(stimuli)
+    model_RDM = create_rdm(stimuli, 'hamming', 'Agent')
+
+    EEG_rand_dict = {}
+
+    # Simulating an EEG rdm list with random RDMs
+    for i in range(1,10):
+        EEG_rand_dict[str(i)] = (np.random.rand(24, 24))
+
+    # Putting the model RDM to show that it will be returned as most similar
+    EEG_rand_dict['11'] = model_RDM
+
+    most_similar, time_window_dist_df = find_maximal_correlation(EEG_rand_dict, model_RDM)
+    print(most_similar)
+
     print(type(create_rdm(stimuli, 'hamming', 'Agent')))
 
     # correlate_models test
@@ -125,18 +139,3 @@ if __name__ == '__main__':
         eeg_rdm = np.ones(shape=(24, 24))
 
     print(correlate_models(model_rdm, eeg_rdm))
-
-    stimuli = numpy.asarray(stimuli)
-    model_RDM = create_rdm(stimuli, 'hamming', 'Agent')
-
-    EEG_rand_dict = {}
-
-    # Simulating an EEG rdm list with random RDMs
-    for i in range(1,10):
-        EEG_rand_dict[str(i)] = (numpy.random.rand(24, 24))
-
-    # Putting the model RDM to show that it will be returned as most similar
-    EEG_rand_dict['11'] = model_RDM
-
-    most_similar, time_window_dist_df = find_maximal_correlation(EEG_rand_dict, model_RDM)
-    print(most_similar)
