@@ -28,7 +28,7 @@ windowed_eeg_dict = ccn_io.construct_time_window_representations(agent_action_di
 windowed_eeg_rdm_dict = {}
 
 for window, eeg_data in windowed_eeg_dict:
-    name = 'eeg_rdm_' + window
+    name = 'eeg_rdm_' + str(window[0]) + ":" + str(window[1])
     windowed_eeg_rdm_dict[window] = rsa.create_rdm(eeg_data, 'mahalanobis', name)
 
 # Model RDM will be provided by a function

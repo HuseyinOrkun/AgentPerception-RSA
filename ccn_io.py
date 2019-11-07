@@ -19,22 +19,21 @@ def build_EEG_data(EEG_root_path):
     subjList = [name[0:6] for name in folders]
 
     dataFileList = []
-    subjFileList = []
     for folder in folders:
 
         # create the file path inside a sıbject's file
-        file_pth = EEG_root_path + folder + '/'
+        file_pth = EEG_root_path + folder + '/action-mats/'
 
         # get all the .mat files
         files = [name for name in os.listdir(file_pth) if name.endswith('.mat')]
 
-
+        subjFileList = []
         # Create a list of mat files for each subject
         for file in files:
             subjFileList.append(file_pth + file)
         if subjFileList:
             dataFileList.append(subjFileList)
-        subjFileList = []
+
 
     # Dictionary to store each agent action combination data, each key is an agent action combination e.g.
     # human_wave etc, end each value is a 2D numpy array which is average of all trials and subjects for
@@ -48,24 +47,24 @@ def build_EEG_data(EEG_root_path):
         if subjFileList:
             for filename in subjFileList:
                 loaded_file = sio.loadmat(filename)
-                index = [i for i, s in enumerate(list(loaded_file.keys())) if 'subj' in s]
-                if not index:
-                    stimuli_type = list(loaded_file.keys())[-1] + ''
-                else:
-                    stimuli_type = list(loaded_file.keys())[index[0]]
 
                 # subj_agent_action is a subject's eeg data for an action agent combination
-                subj_agent_action = np.asarray(loaded_file[stimuli_type])  # Check its size
-                print("Shape of subj_agent_Action: " + str(subj_agent_action.shape))  # For debug purposes, remove later
+                subj_agent_action = np.asarray(loaded_file["eeg_data"])
+                input_type = loaded_file["input_type"]
+                experiment_type = loaded_file["experiment_type"]
+                action = loaded_file["action"]
+                agent = loaded_file["agent"]
+
 
                 # If there is no key with the particular agent_action create a list for it, else
-                if stimuli_type in agent_action_dict.keys():
-                    agent_action_dict[stimuli_type].append(subj_agent_action)
+                if (agent, action) in agent_action_dict.keys():
+                    agent_action_dict[(agent, action)].append(subj_agent_action)
                 else:
-                    agent_action_dict[stimuli_type] = []
+                    agent_action_dict[(agent, action)] = [subj_agent_action]
 
     # Traverse agent_action_dict, and for each value concat and average on 3rd dimension
     for agent_action, agent_action_eeg in agent_action_dict.items():
+
         # Concatanate trial and subjects
         agent_action_concat = np.concatenate(agent_action_eeg, 2)
 
@@ -86,7 +85,8 @@ def construct_time_window_representations(agent_action_dict, time_window_size):
         key = None
         for start in range(0, n_timepts, time_window_size):
             end = start + time_window_size
-            key = "(" + str(start) + ", " + str(end) + ")"
+
+            key = (start, end)  # "(" + str(start) + ", " + str(end) + ")"
             if key not in time_window_representations.keys():
                 time_window_representations[key] = [v[:, start:end].flatten()]
             else:
