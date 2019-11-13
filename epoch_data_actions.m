@@ -37,7 +37,7 @@ end
 for k=1:length(folders)
     if(folders(k).isdir && ~strcmp(folders(k).name,'.') && ~strcmp(folders(k).name,'..') )
        folder_name = folders(k).name;
-       subj_no = folder_name(1:7);
+       subj_no = folder_name(1:6);
        file_path = strcat(pth,folder_name,'/');
        files = dir(file_path);
        for i=1:length(files)

@@ -8,10 +8,9 @@ from scipy import stats
 
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
 # metric: A difference metric to compare activation patterns from {'hamming', 'mahalanobis'}
-# TODO: to add more distances, add args and kwargs to signature.
-# TODO: check pdist for its ability to compare matrices
 
-def create_rdm(X, metric, name):
+
+def create_rdm(X, metric, name, save_path=None):
 
     # Calculate distance between eah row of X
     # Condensed distance matrix RDM. For each i and j (where i < j < m),
@@ -19,15 +18,15 @@ def create_rdm(X, metric, name):
     # The metric dist(u=X[i], v=X[j]) is computed and stored in entry ij of RDM
     RDM = pdist(X, metric)
     RDM = squareform(RDM)
-    np.save(name+'RDM', RDM)
+    np.save(save_path+name, RDM)
     fig, ax = plt.subplots()
-
 
     colorData = io.loadmat('colorData.mat')
     cmap = np.flipud(colorData['Blues9'])
     cmap = cmap[1:,:]
     ax = sns.heatmap(RDM, cmap=cmap.tolist())
-    plt.savefig(name+'-RDM.png')
+    ax.set_title(name)
+    plt.savefig(save_path+name+'-RDM.png')
     return RDM
 
 # Correlate a list of EEG RDM's with a model RDM, find the maximal correlation and report

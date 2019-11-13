@@ -98,16 +98,22 @@ def construct_time_window_representations(agent_action_dict, time_window_size):
 
 # This function loads a model from storage given the file type and file path
 # returns the model as a pandas dataframe. CSV and MAT types are supported for now.
-def load_model(file_path, file_type):
+def load_model(file_path):
+    extension = os.path.splitext(os.path.basename(file_path))[1]
     model = None
-    if file_type == 'csv':
-        model = pd.read_csv(file_path, index_col=0,skiprows=[0])
-
-    elif file_type == 'mat':
+    if extension == '.csv':
+        model = pd.read_csv(file_path, index_col=0, skiprows=[0])
+    elif extension == '.mat':
+        print("Warning this is not yet tested")
+        model = sio.loadmat(file_path)['model']
+    elif extension == '.np':
         print("Warning this is not yet tested")
         model = sio.loadmat(file_path)['model']
 
     return model
+
+def load_rdm(filename):
+    return np.load(filename + '.npy')
 
 
 if __name__ == '__main__':
