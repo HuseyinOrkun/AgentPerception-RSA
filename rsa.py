@@ -5,29 +5,96 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 from scipy import stats
+from sklearn.discriminant_analysis import _cov
+from sklearn.model_selection import LeaveOneOut
+from itertools import combinations
+
+
 
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
 # metric: A difference metric to compare activation patterns from {'hamming', 'mahalanobis'}
 
 
-def create_rdm(X, metric, name, save_path=None):
+def create_rdm(X, metric, name, cv=False, save_path=None):
 
     # Calculate distance between eah row of X
     # Condensed distance matrix RDM. For each i and j (where i < j < m),
     # where m is the number of original observations.
     # The metric dist(u=X[i], v=X[j]) is computed and stored in entry ij of RDM
-    RDM = pdist(X, metric)
-    RDM = squareform(RDM)
-    np.save(save_path+name, RDM)
-    fig, ax = plt.subplots()
+    if not cv:
+        #TODO: average on the trial axis, then calculate distance
 
-    colorData = io.loadmat('colorData.mat')
-    cmap = np.flipud(colorData['Blues9'])
-    cmap = cmap[1:,:]
-    ax = sns.heatmap(RDM, cmap=cmap.tolist())
-    ax.set_title(name)
-    plt.savefig(save_path+name+'-RDM.png')
+        RDM = pdist(X, metric)
+        RDM = squareform(RDM)
+
+    elif cv and metric == "mahalonobis":
+        RDM = cv_mahalonobis(X)
+        #TODO: do the cross validated mahalonobis here
+
+        #
+        # fig, ax = plt.subplots()
+        # colorData = io.loadmat('colorData.mat')
+        # cmap = np.flipud(colorData['Blues9'])
+        # cmap = cmap[1:,:]
+        # ax = sns.heatmap(RDM, cmap=cmap.tolist())
+        # ax.set_title(name)
+        # plt.savefig(save_path+name+'-RDM.png')
+    else:
+        RDM = np.full((X.shape[0], X.shape[0]), fill_value=np.nan)
+        raise NotImplementedError
+
+    np.save(save_path + name, RDM)
+
     return RDM
+
+
+def cv_mahalonobis(X, cv_scheme=LeaveOneOut()):
+
+    # TODO: check if true
+
+    # Get data dimensions
+    trial_indices = np.arange(X.shape[1])
+    n_conditions = X.shape[0]
+    n_channels = X.shape[1]
+    cond_list = np.arange(n_conditions)
+    # Divide to train and test using leave one out, do
+    RDM_list = []
+    for train_indices, test_indices in cv_scheme.split(trial_indices):
+
+        # Get data for the current fold
+        train_data = X[:, train_indices, :]
+        if len(train_indices)>1:
+            train_data = np.mean(train_data, axis=1)
+        test_data = X[:, test_indices, :]
+        if len(test_indices) > 1:
+            test_data = np.mean(test_data, axis=1)
+
+        # Calculate the cov matrix of the training set
+        # TODO: check if logic is right
+        sigma = np.mean([_cov(X[condition, train_indices, :], shrinkage='auto') for condition in range(n_conditions)])
+
+        RDM = np.zeros((n_conditions, n_conditions))
+
+        # for each pair of conditions in n_conditions, create 2 vectors k than do the multiplication
+        # multiply c train inverse of cov, test transpose and c transpose
+        for comb in combinations(cond_list, 2):
+
+            k = comb[0]
+            j = comb[1]
+            c = np.zeros(n_conditions)
+            c[k] = -1
+            c[j] = 1
+
+            RDM[j,k] = RDM[k,j] = c @ train_data @ sigma @ test_data.transpose() @ c.transpose() # as in Walther
+        RDM_list.append(RDM)
+
+    RDM = np.mean(RDM_list, axis=0)
+
+    return RDM
+
+
+
+
 
 # Correlate a list of EEG RDM's with a model RDM, find the maximal correlation and report
 # Will use sena's function to correlate an EEG RDM and a model RDM
@@ -36,18 +103,15 @@ def create_rdm(X, metric, name, save_path=None):
 # biggest distance and a pandas dataframe containing all distances
 
 
-def find_maximal_correlation(EEG_RDM_dict, model_RDM):
+def correlate_windowed(EEG_RDM_dict, subject, model_RDM):
 
     dist_per_time_window = []
     for time_window, EEG_RDM in EEG_RDM_dict.items():
         kendall_tau, kendall_p_value = correlate_models(model_RDM, EEG_RDM)
-        dist_per_time_window.append([time_window, kendall_tau, kendall_p_value])
-    time_window_dist_df = pd.DataFrame(dist_per_time_window, columns=['time_window','kendall_tau','kendall_p_value'])
+        dist_per_time_window.append([time_window, subject, kendall_tau, kendall_p_value])
+    time_window_dist_df = pd.DataFrame(dist_per_time_window, columns=['time_window', 'subject', 'kendall_tau','kendall_p_value'])
 
-    # if metric is similarity instead of distance (dissimilarity), change ascending to False
-    time_window_dist_df_sorted = time_window_dist_df.sort_values(by='kendall_tau', ascending=False)
-
-    return time_window_dist_df_sorted.iloc[0], time_window_dist_df
+    return time_window_dist_df
 
   
 # Should we really concat upper and lower triangles
@@ -125,7 +189,7 @@ if __name__ == '__main__':
     # Putting the model RDM to show that it will be returned as most similar
     EEG_rand_dict['11'] = model_RDM
 
-    most_similar, time_window_dist_df = find_maximal_correlation(EEG_rand_dict, model_RDM)
+    most_similar, time_window_dist_df = correlate_windowed(EEG_rand_dict, model_RDM)
     print(most_similar)
 
     print(type(create_rdm(stimuli, 'hamming', 'Agent')))
