@@ -27,7 +27,7 @@ def create_rdm(X, metric, name, cv=False, save_path=None):
         RDM = pdist(X, metric)
         RDM = squareform(RDM)
 
-    elif cv and metric == "mahalonobis":
+    elif cv and metric == "mahalanobis":
         RDM = cv_mahalonobis(X)
         #TODO: do the cross validated mahalonobis here
 
