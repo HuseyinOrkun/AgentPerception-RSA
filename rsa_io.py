@@ -50,7 +50,7 @@ def build_EEG_data(EEG_subject_action_mats_path, time_window_size):
             else:
                 time_window_representations[key].append(np.average(subj_agent_action[:, start:end,:], axis=1).transpose())
     for key, value in time_window_representations.items():
-        time_window_representations[key] = np.array(value)
+        time_window_representations[key] = np.asarray(value)
 
     return time_window_representations
 
