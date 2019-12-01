@@ -57,7 +57,7 @@ for i, folder in enumerate(folders):
     subj_name = folder[0:6]
     subj_path = args.eeg_root_path + folder + "/action-mats/"
 
-    # windowed eeg dict: time windows as keys and a 3D matrix of size conditions, channels, trials
+    # windowed eeg dict: time windows as keys and a 3D matrix of size conditions, trial, channels
     windowed_eeg_dict = ccn_io.build_EEG_data(subj_path, args.w_size)
 
     # traverse each window in windowed_eeg_dict and calculate rdm
@@ -71,5 +71,6 @@ for i, folder in enumerate(folders):
 
     for model_name, model_RDM in model_RDM_dict.items():
         time_window_dist_df = rsa.correlate_windowed(windowed_eeg_rdm_dict, subj_name, model_RDM)
+
 
 
