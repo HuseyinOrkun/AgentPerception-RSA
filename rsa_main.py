@@ -5,6 +5,7 @@ import rsa_io
 import rsa
 import argparse
 import os
+import pandas as pd
 import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -54,26 +55,49 @@ windowed_eeg_rdm_dict = defaultdict(list)
 # TODO think about rdm ready later, maybe save each rdm to the corresponding subjects folder
 folders = [name for name in os.listdir(args.eeg_root_path) if os.path.isdir(args.eeg_root_path + name) and name.startswith("subj")]
 n_subjects = len(folders)
+#rdm_statistics_df = pd.DataFrame(columns=['Subject name', 'Model name', 'Time window', 'Kendall tau', 'Kendall p-value'])
+
+rdm_statistics_list =[]
 
 # For all subjects do
 for i, folder in enumerate(folders):
     subj_name = folder[0:6]
     subj_path = args.eeg_root_path + folder + "/action-mats/"
 
-    # windowed eeg dict: time windows as keys and a 3D matrix of size conditions, channels, trials
-    windowed_eeg_dict = rsa_io.build_EEG_data(subj_path, args.w_size)
+    # Keys are windows.
+    # Each value in the time_window_representations is a 3D ndarray
+    # with size (n_conditions, n_trials, n_channels). Since n_trials
+    # are not same for each condition, the missing values are filled
+    # with NaN.
+    time_window_representations = rsa_io.build_EEG_data(subj_path, args.w_size)
 
-    # traverse each window in windowed_eeg_dict and calculate rdm
-    for window, eeg_data in windowed_eeg_dict.items():
+    # traverse each window in time_window_representations and calculate rdm
+    for window, eeg_data in time_window_representations.items():
 
         name = subj_name + '_eeg_rdm_' + str(window[0]) + ":" + str(window[1]) + "_" + eeg_rdm_dist_metric
-        windowed_eeg_rdm_dict[window].append(rsa.create_rdm(eeg_data, eeg_rdm_dist_metric, name, cv=True))
+        windowed_eeg_rdm_dict[window] = rsa.create_rdm(eeg_data, eeg_rdm_dist_metric, name, cv=True)
 
     # Compare each model rdm with every subjects rdm and take the mean of all kendalls' tau values.
     # What can be the statistical test here?
     # For each model in the model path run create rdm if that model rdm is not created
 
+    # TODO edit the comments
+    # Correlate a list of EEG RDM's with a model RDM, find the maximal correlation and report
+    # Will use sena's function to correlate an EEG RDM and a model RDM
+    # Input: A dictionary of EEG RDMs as time windows as keys and RDMs as values and a model RDM
+    # Output: Returns a pandas Series that contains the time window and
+    # biggest distance and a pandas dataframe containing all distances
+
     for model_name, model_RDM in model_RDM_dict.items():
-        time_window_dist_df = rsa.correlate_windowed(windowed_eeg_rdm_dict, subj_name, model_RDM)
+        dist_per_time_window = []
+        for time_window, EEG_RDM in windowed_eeg_rdm_dict.items():
+            kendall_tau, kendall_p_value = rsa.correlate_models(model_RDM, EEG_RDM)
+            rdm_statistics_list.append([subj_name, model_name, time_window, kendall_tau, kendall_p_value])
+
+rdm_statistics_df = pd.DataFrame(rdm_statistics_list, columns=['Subject name', 'Model name', 'Time window', 'Kendall tau', 'Kendall p-value'])
+
+subj_avg_df = rdm_statistics_df.groupby(["Time window", "Model name"]).mean()
+ind = subj_avg_df.groupby('Model name')['Kendall tau'].idxmax()
+summary = subj_avg_df.loc[ind]
 
 
