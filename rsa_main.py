@@ -6,6 +6,7 @@ import rsa
 import argparse
 import os
 import numpy as np
+import pandas as pd
 
 parser = argparse.ArgumentParser()
 parser.add_argument('eeg_root_path', type=str,
@@ -55,25 +56,40 @@ windowed_eeg_rdm_dict = defaultdict(list)
 folders = [name for name in os.listdir(args.eeg_root_path) if os.path.isdir(args.eeg_root_path + name) and name.startswith("subj")]
 n_subjects = len(folders)
 
-# For all subjects do
-for i, folder in enumerate(folders):
-    subj_name = folder[0:6]
-    subj_path = args.eeg_root_path + folder + "/action-mats/"
 
-    # windowed eeg dict: time windows as keys and a 3D matrix of size conditions, channels, trials
-    windowed_eeg_dict = rsa_io.build_EEG_data(subj_path, args.w_size)
+# Keep model performance data e.g kendall tau values
+model_performance_data = {}
 
-    # traverse each window in windowed_eeg_dict and calculate rdm
-    for window, eeg_data in windowed_eeg_dict.items():
 
-        name = subj_name + '_eeg_rdm_' + str(window[0]) + ":" + str(window[1]) + "_" + eeg_rdm_dist_metric
-        windowed_eeg_rdm_dict[window].append(rsa.create_rdm(eeg_data, eeg_rdm_dist_metric, name, cv=True))
 
-    # Compare each model rdm with every subjects rdm and take the mean of all kendalls' tau values.
-    # What can be the statistical test here?
-    # For each model in the model path run create rdm if that model rdm is not created
+# For every model, run similarity for each subject
+for model_name, model_RDM in model_RDM_dict.items():
 
-    for model_name, model_RDM in model_RDM_dict.items():
-        time_window_dist_df = rsa.correlate_windowed(windowed_eeg_rdm_dict, subj_name, model_RDM)
+    # Keep a list of subject similartiy dfs to merge at the end of subject loop
+    subject_similarities = []
+
+    # For all subjects do
+    for i, folder in enumerate(folders):
+        subj_name = folder[0:6]
+        subj_path = args.eeg_root_path + folder + "/action-mats/"
+
+        # windowed eeg dict: time windows as keys and a 3D matrix of size conditions, channels, trials
+        windowed_eeg_dict = rsa_io.build_EEG_data(subj_path, args.w_size)
+
+        # traverse each window in windowed_eeg_dict and calculate rdm
+        for window, eeg_data in windowed_eeg_dict.items():
+            name = subj_name + '_eeg_rdm_' + str(window[0]) + ":" + str(window[1]) + "_" + eeg_rdm_dist_metric
+            windowed_eeg_rdm_dict[window].append(rsa.create_rdm(eeg_data, eeg_rdm_dist_metric, name, cv=True))
+
+        # Compare a subject's all time windowed eeg rdms with a model
+        subject_similarities.append(rsa.correlate_windowed(windowed_eeg_rdm_dict, subj_name, model_RDM))
+
+    # eegRDM modelRDM similarities for all subjects and time windows for a model
+    similarity_df = pd.concat(subject_similarities)
+
+    # Calculate average of all subjects kendall tau for each window
+    mean_kendall_per_window = similarity_df[['time_window','kendall_tau']].groupby(["time_window"]).mean()
+
+    # Plot line curve of kendall average values with error bars calculated from similarity graph
 
 

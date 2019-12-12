@@ -8,7 +8,7 @@ from scipy import stats
 from sklearn.discriminant_analysis import _cov
 from sklearn.model_selection import LeaveOneOut
 from itertools import combinations
-
+from scipy.stats import rankdata
 
 
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
@@ -31,14 +31,6 @@ def create_rdm(X, metric, name, cv=False, save_path=None):
         RDM = cv_mahalonobis(X)
         #TODO: do the cross validated mahalonobis here
 
-        #
-        # fig, ax = plt.subplots()
-        # colorData = io.loadmat('colorData.mat')
-        # cmap = np.flipud(colorData['Blues9'])
-        # cmap = cmap[1:,:]
-        # ax = sns.heatmap(RDM, cmap=cmap.tolist())
-        # ax.set_title(name)
-        # plt.savefig(save_path+name+'-RDM.png')
     else:
         RDM = np.full((X.shape[0], X.shape[0]), fill_value=np.nan)
         raise NotImplementedError
@@ -92,6 +84,56 @@ def cv_mahalonobis(X, cv_scheme=LeaveOneOut()):
 
     return RDM
 
+def calculateNoiseLevel(refRDMs):
+
+    # Input: RDMs (List) of subjects as refRDMs, rank transform refRDMs, For upper level estimate take grand average and using  group average RDM
+    # get pairwise kentall tau correlations with subject RDMS and take average of kendall taus's, For lower level RDM, using LOO cross validation take pairwise
+    # distances between averaged train set RDMS and test set rdm then take average of kendall taus.
+    # Output: Lower and upper level noise ceiling for visualization
+
+    n_subjects = len(refRDMs)
+
+    # refRDMs is a list of upper triangle of RDM vectors
+    for i, refRDM in enumerate(refRDMs):
+        refRDMs[i] = rankdata(refRDM)
+
+    # Average rank transformed refRDMs, on subject dimension
+    avg_refRDM = np.mean(refRDMs, axis=0)
+
+
+    RDM_corrs_upper = []
+
+    # For all subjects, correlate avg_refRDM and subject rdm
+    for subject_no in range(n_subjects):
+
+        # Correlate avg of referance rdms with a single subject rdm
+        kendall_tau, p = correlate_models(avg_refRDM, refRDMs[subject_no])
+
+        # Record kendall tau in a list
+        RDM_corrs_upper.append(kendall_tau)
+
+    upper_ceiling = np.mean(RDM_corrs_upper)
+
+    # Calculate Lower bound estimate
+    RDM_corrs_lower= []
+
+    # Calculate lower bound estimate for noise ceiling
+    cv_scheme = LeaveOneOut()
+    for train_indices, test_indices in cv_scheme.split(n_subjects):
+
+        # Subject's RDM
+        test_RDM = refRDMs[test_indices]
+
+        # Take other subjects rdm and average
+        train_RDM = np.mean(refRDMs[train_indices], axis=0)
+
+        # correlate models and store results in a list
+        kendall_tau, p = correlate_models(train_RDM, test_RDM)
+        RDM_corrs_lower.append(kendall_tau)
+
+    # Lower ceiling found by averaging kendall tau correlations
+    lower_ceiling = np.mean(RDM_corrs_lower)
+    return lower_ceiling, upper_ceiling
 
 
 
@@ -109,7 +151,8 @@ def correlate_windowed(EEG_RDM_dict, subject, model_RDM):
     for time_window, EEG_RDM in EEG_RDM_dict.items():
         kendall_tau, kendall_p_value = correlate_models(model_RDM, EEG_RDM)
         dist_per_time_window.append([time_window, subject, kendall_tau, kendall_p_value])
-    time_window_dist_df = pd.DataFrame(dist_per_time_window, columns=['time_window', 'subject', 'kendall_tau','kendall_p_value'])
+    time_window_dist_df = pd.DataFrame(dist_per_time_window, columns=['time_window', 'subject',
+                                                                      'kendall_tau', 'kendall_p_value'])
 
     return time_window_dist_df
 
@@ -144,6 +187,20 @@ def correlate_models(model_rdm, eeg_rdm):
     # association, i.e. tau = 0.
     kendall_tau, kendall_p_value = stats.kendalltau(off_model_rdm, off_eeg_rdm)
     return kendall_tau, kendall_p_value
+
+
+def visualizeRDM(vectorRDM, title, f_name):
+
+    RDM = squareform(vectorRDM)
+    fig, ax = plt.subplots()
+    colorData = io.loadmat('colorData.mat')
+    cmap = np.flipud(colorData['Blues9'])
+    cmap = cmap[1:,:]
+    ax = sns.heatmap(RDM, cmap=cmap.tolist())
+    ax.set_title(title)
+    plt.savefig(f_name+'-RDM.png')
+
+
 
 if __name__ == '__main__':
     robot_drink = [1,0,0]
