@@ -1,10 +1,8 @@
 from scipy.spatial.distance import pdist,squareform
 from scipy import io, stats
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 from scipy import stats
+from scipy.stats import rankdata
 from sklearn.discriminant_analysis import _cov
 from sklearn.model_selection import LeaveOneOut
 from itertools import combinations
@@ -14,7 +12,7 @@ from itertools import combinations
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
 # metric: A difference metric to compare activation patterns from {'hamming', 'mahalanobis'}
 
-
+# create rdm gives upper triangle
 def create_rdm(X, metric, name, cv=False, save_path=''):
 
     # Calculate distance between eah row of X
@@ -44,10 +42,18 @@ def create_rdm(X, metric, name, cv=False, save_path=''):
         # RDM = np.full((X.shape[0], X.shape[0]), fill_value=np.nan)
         raise NotImplementedError
 
-    np.save(save_path + name, RDM)
+    vector_RDM = vectorize(RDM)
+    np.save(save_path + name, vector_RDM)
+
 
     return RDM
 
+def vectorize(RDM):
+    # upper triangle. k=1 excludes the diagonal elements.
+    xu, yu = np.triu_indices_from(RDM, k=1)
+    vector_RDM = RDM[xu, yu]
+
+    return vector_RDM
 
 def cv_mahalonobis(X, cv_scheme=LeaveOneOut()):
 
@@ -101,43 +107,65 @@ def cv_mahalonobis(X, cv_scheme=LeaveOneOut()):
 
     return RDM
 
-
-
-
-
-
-
   
 # Should we really concat upper and lower triangles
 # the correlation doubles
 def correlate_models(model_rdm, eeg_rdm):
 
-    # upper triangle. k=1 excludes the diagonal elements.
-    xu, yu = np.triu_indices_from(model_rdm, k=1)
-    # lower triangle
-    xl, yl = np.tril_indices_from(model_rdm, k=-1)  # Careful, here the offset is -1
-
-    # combine
-    x = np.concatenate((xl, xu))
-    y = np.concatenate((yl, yu))
-    off_model_rdm = model_rdm[x,y]
-
-    # upper triangle. k=1 excludes the diagonal elements.
-    xu, yu = np.triu_indices_from(eeg_rdm, k=1)
-    # lower triangle
-    xl, yl = np.tril_indices_from(eeg_rdm, k=-1)  # Careful, here the offset is -1
-
-    # combine
-    x = np.concatenate((xl, xu))
-    y = np.concatenate((yl, yu))
-    off_eeg_rdm = eeg_rdm[x,y]
-
     # Kendall’s tau is a measure of the correspondence between two rankings. Values
     # close to 1 indicate strong agreement, values close to -1 indicate strong disagreement.
     # The two-sided p-value for a hypothesis test whose null hypothesis is an absence of
     # association, i.e. tau = 0.
-    kendall_tau, kendall_p_value = stats.kendalltau(off_model_rdm, off_eeg_rdm)
+    kendall_tau, kendall_p_value = stats.kendalltau(model_rdm, eeg_rdm)
     return kendall_tau, kendall_p_value
+
+
+def calculateNoiseCeiling(refRDMs):
+    # Input: RDMs (List) of subjects as refRDMs, rank transform refRDMs, For upper level estimate take grand average and using  group average RDM
+    # get pairwise kentall tau correlations with subject RDMS and take average of kendall taus's, For lower level RDM, using LOO cross validation take pairwise
+    # distances between averaged train set RDMS and test set rdm then take average of kendall taus.
+    # Output: Lower and upper level noise ceiling for visualization
+
+    n_subjects = len(refRDMs)
+
+    # refRDMs is a list of upper triangle of RDM vectors
+    for i, refRDM in enumerate(refRDMs):
+        refRDMs[i] = rankdata(refRDM)
+
+    # Average rank transformed refRDMs, on subject dimension
+    avg_refRDM = np.mean(refRDMs, axis=0)
+
+    RDM_corrs_upper = []
+
+    # For all subjects, correlate avg_refRDM and subject rdm
+    for subject_no in range(n_subjects):
+        # Correlate avg of referance rdms with a single subject rdm
+        kendall_tau, p = correlate_models(avg_refRDM, refRDMs[subject_no])
+
+        # Record kendall tau in a list
+        RDM_corrs_upper.append(kendall_tau)
+
+    upper_ceiling = np.mean(RDM_corrs_upper)
+
+    # Calculate Lower bound estimate
+    RDM_corrs_lower = []
+
+    # Calculate lower bound estimate for noise ceiling
+    cv_scheme = LeaveOneOut()
+    for train_indices, test_indices in cv_scheme.split(range(n_subjects)):
+        # Subject's RDM
+        test_RDM = [refRDMs[i] for i in  test_indices]
+
+        # Take other subjects rdm and average
+        train_RDM = np.mean([refRDMs[i] for i in  train_indices], axis=0)
+
+        # correlate models and store results in a list
+        kendall_tau, p = correlate_models(train_RDM, test_RDM)
+        RDM_corrs_lower.append(kendall_tau)
+
+    # Lower ceiling found by averaging kendall tau correlations
+    lower_ceiling = np.mean(RDM_corrs_lower)
+    return lower_ceiling, upper_ceiling
 
 if __name__ == '__main__':
     robot_drink = [1,0,0]
@@ -183,8 +211,8 @@ if __name__ == '__main__':
     # Putting the model RDM to show that it will be returned as most similar
     EEG_rand_dict['11'] = model_RDM
 
-    most_similar, time_window_dist_df = correlate_windowed(EEG_rand_dict, model_RDM)
-    print(most_similar)
+    #most_similar, time_window_dist_df = correlate_windowed(EEG_rand_dict, model_RDM)
+    #print(most_similar)
 
     print(type(create_rdm(stimuli, 'hamming', 'Agent')))
 

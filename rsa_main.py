@@ -6,7 +6,7 @@ import rsa
 import argparse
 import os
 import pandas as pd
-import numpy as np
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('eeg_root_path', type=str,
@@ -75,7 +75,7 @@ for i, folder in enumerate(folders):
     for window, eeg_data in time_window_representations.items():
 
         name = subj_name + '_eeg_rdm_' + str(window[0]) + ":" + str(window[1]) + "_" + eeg_rdm_dist_metric
-        windowed_eeg_rdm_dict[window] = rsa.create_rdm(eeg_data, eeg_rdm_dist_metric, name, cv=True)
+        windowed_eeg_rdm_dict[window].append(rsa.create_rdm(eeg_data, eeg_rdm_dist_metric, name, cv=True))
 
     # Compare each model rdm with every subjects rdm and take the mean of all kendalls' tau values.
     # What can be the statistical test here?
@@ -90,14 +90,37 @@ for i, folder in enumerate(folders):
 
     for model_name, model_RDM in model_RDM_dict.items():
         dist_per_time_window = []
-        for time_window, EEG_RDM in windowed_eeg_rdm_dict.items():
-            kendall_tau, kendall_p_value = rsa.correlate_models(model_RDM, EEG_RDM)
+        for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
+
+            kendall_tau, kendall_p_value = rsa.correlate_models(model_RDM, EEG_RDM_list[i])
             rdm_statistics_list.append([subj_name, model_name, time_window, kendall_tau, kendall_p_value])
+
+
+upper_ceiling_list = []
+lower_ceiling_list = []
+for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
+    lower_ceiling, upper_ceiling = rsa.calculateNoiseCeiling(EEG_RDM_list)
+    lower_ceiling_list.append(lower_ceiling)
+    upper_ceiling_list.append(upper_ceiling_list)
 
 rdm_statistics_df = pd.DataFrame(rdm_statistics_list, columns=['Subject name', 'Model name', 'Time window', 'Kendall tau', 'Kendall p-value'])
 
-subj_avg_df = rdm_statistics_df.groupby(["Time window", "Model name"]).mean()
+subj_avg_df = rdm_statistics_df.groupby(["Time window", "Model name"]).mean().reset_index()
 ind = subj_avg_df.groupby('Model name')['Kendall tau'].idxmax()
 summary = subj_avg_df.loc[ind]
+print(summary)
+
+pivoted = subj_avg_df.pivot(index='Time window', columns='Model name', values='Kendall tau')
+print(pivoted)
+pivoted.plot()
+plt.show()
+
+
+
+print('end')
+
+
+
+
 
 
