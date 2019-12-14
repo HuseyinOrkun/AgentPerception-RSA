@@ -21,9 +21,10 @@ def build_EEG_data(EEG_subject_action_mats_path, time_window_size):
 
     # Dictionary to store each agent action combination data, each key is an agent action combination e.g.
     # human_wave etc, and each value is a list of 2D numpy arrays with shape trial, channel
-    agent_action_dict = {}
-
     time_window_representations = dict()
+    max_n_trials = 0
+    n_conditions = len(subject_action_file_paths)
+    n_channels = 0
 
     for subject_action_file_path in subject_action_file_paths:
         loaded_file = sio.loadmat(subject_action_file_path)
@@ -39,6 +40,8 @@ def build_EEG_data(EEG_subject_action_mats_path, time_window_size):
         n_timepts = subj_agent_action.shape[1]
         n_channels = subj_agent_action.shape[0]
         n_trials = subj_agent_action.shape[2]
+        if n_trials > max_n_trials:
+            max_n_trials = n_trials
         if n_timepts % time_window_size != 0:
             raise ValueError('Total number of timepoints is not divisable by given time_window_size')
 
@@ -49,8 +52,19 @@ def build_EEG_data(EEG_subject_action_mats_path, time_window_size):
                 time_window_representations[key] = [np.average(subj_agent_action[:, start:end,:], axis=1).transpose()]
             else:
                 time_window_representations[key].append(np.average(subj_agent_action[:, start:end,:], axis=1).transpose())
+
+
+    # Each value in the time_window_representations is a 3D ndarray
+    # with size (n_conditions, n_trials, n_channels). Since n_trials
+    # are not same for each condition, the missing values are filled
+    # with NaN.
     for key, value in time_window_representations.items():
-        time_window_representations[key] = np.asarray(value)
+        b = np.full((n_conditions, max_n_trials, n_channels), np.nan)
+
+        for i, j in enumerate(value):
+            b[i][0:len(j)] = j
+
+        time_window_representations[key] = b
 
     return time_window_representations
 
@@ -70,6 +84,7 @@ def load_model(file_path):
         model = sio.loadmat(file_path)['model']
 
     return model
+
 
 def load_rdm(filename):
     return np.load(filename + '.npy')
