@@ -4,27 +4,23 @@ import numpy as np
 import csv
 from numpy import genfromtxt
 import pandas as pd
-
-# build_EEG_data takes EEG root path and loads EEG data
-# Input: EEG_root_path is the root path to the folder which has all the subjects folders
-# each subject folder has 24 mat files e.g. human-wave, robot-wave etc
-# Output: agent_action_all_avg: all eeg_data averaged on
-# name of folders of subjects
+import h5py
+from collections import defaultdict
 
 
-def build_EEG_data(EEG_subject_action_mats_path, time_window_size):
+# Input: EEG_root_path is the root path to the folder which has all the subjects folders.
+# Each subject folder has 24 mat files e.g. human-wave, robot-wave etc
+# Output: time_window_representations: Keys are time windows, Each value in the time_window_representations
+# is a 3D ndarray with size (n_conditions, n_trials, n_channels)
 
-
+def build_eeg_data(subject_action_mats_path, time_window_size):
     # get all the .mat files
-    subject_action_file_paths = [EEG_subject_action_mats_path + name
-                                 for name in os.listdir(EEG_subject_action_mats_path) if name.endswith('.mat')]
+    subject_action_file_paths = [subject_action_mats_path + name
+                                 for name in os.listdir(subject_action_mats_path) if name.endswith('.mat')]
 
-    # Dictionary to store each agent action combination data, each key is an agent action combination e.g.
-    # human_wave etc, and each value is a list of 2D numpy arrays with shape trial, channel
-    time_window_representations = dict()
+    time_window_representations = defaultdict(list)
     max_n_trials = 0
     n_conditions = len(subject_action_file_paths)
-    n_channels = 0
 
     for subject_action_file_path in subject_action_file_paths:
         loaded_file = sio.loadmat(subject_action_file_path)
@@ -47,12 +43,8 @@ def build_EEG_data(EEG_subject_action_mats_path, time_window_size):
 
         for start in range(0, n_timepts, time_window_size):
             end = start + time_window_size
-            key = (start, end)  # "(" + str(start) + ", " + str(end) + ")"
-            if key not in time_window_representations.keys():
-                time_window_representations[key] = [np.average(subj_agent_action[:, start:end,:], axis=1).transpose()]
-            else:
-                time_window_representations[key].append(np.average(subj_agent_action[:, start:end,:], axis=1).transpose())
-
+            key = (start, end)
+            time_window_representations[key].append(np.average(subj_agent_action[:, start:end, :], axis=1).transpose())
 
     # Each value in the time_window_representations is a 3D ndarray
     # with size (n_conditions, n_trials, n_channels). Since n_trials
@@ -60,12 +52,9 @@ def build_EEG_data(EEG_subject_action_mats_path, time_window_size):
     # with NaN.
     for key, value in time_window_representations.items():
         b = np.full((n_conditions, max_n_trials, n_channels), np.nan)
-
         for i, j in enumerate(value):
-            b[i][0:len(j)] = j
-
+            b[i, 0:len(j), :] = j
         time_window_representations[key] = b
-
     return time_window_representations
 
 
@@ -90,8 +79,28 @@ def load_rdm(filename):
     return np.load(filename + '.npy')
 
 
+# Given the dictionary of eeg_rdms of all subject, save numpy files in a h5df format
+def save_to_hdf5(windowed_eeg_rdm_dict, distance_metric, w_size, name, path):
+    with h5py.File(path + name + ".hdf5", "w") as f:
+        f.attrs["w_size"] = w_size
+        f.attrs["distance_metric"] = distance_metric
+        for time_window, eeg_rdm_np in windowed_eeg_rdm_dict.items():
+            tm_grp=f.create_group(str(time_window))
+            tm_grp.create_dataset("rdm", data=eeg_rdm_np)
+
+
+# Given path of hdf5 file, returns the windowed eeg_rdm_dict and experiment parameters
+def load_from_hdf5(name, path):
+    windowed_eeg_rdm_dict ={}
+    with h5py.File(path + name + ".hdf5", "r") as f:
+        attributes =  list(f.attrs.items())
+        print("Dataset attributes of " + name, attributes)
+        for key in list(f.keys()):
+              windowed_eeg_rdm_dict[tuple(map(int, key[1:-1].split(',')))] = np.asarray(f[key]["rdm"])
+        return windowed_eeg_rdm_dict, attributes
+
 if __name__ == '__main__':
-    test_dict = build_EEG_data('/Users/huseyinelmas/Desktop/data/still/')
+    test_dict = build_eeg_data('/Users/huseyinelmas/Desktop/data/still/')
 
     for key, val in test_dict.items():
         print(key)
