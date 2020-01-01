@@ -90,7 +90,7 @@ if not eeg_rdm_ready:
             eeg_rdm_name = subj_name + '_eeg_rdm_' + str(window[0]) + ":" + str(window[1]) + "_" + args.eeg_rdm_dist_metric
             windowed_eeg_rdm_dict[window].append(rsa.create_rdm(eeg_data, args.eeg_rdm_dist_metric, eeg_rdm_name))
 
-    # TODO: try without vstack
+    # TODO: try without vstackasd
     for window, eeg_rdm_list in windowed_eeg_rdm_dict.items():
         windowed_eeg_rdm_dict[window] = np.vstack(eeg_rdm_list)
 
@@ -106,10 +106,13 @@ for model_name, model_RDM in model_RDM_dict.items():
         kendall_tau, kendall_p_value = rsa.correlate_models(model_RDM, np.mean(EEG_RDM_list, axis=0))
         rdm_statistics_list.append([model_name, time_window, kendall_tau, kendall_p_value])
 
+pd.options.display.width = 100
 rdm_statistics_df = pd.DataFrame(rdm_statistics_list,
                                  columns=['Model name', 'Time window', 'Kendall tau', 'Kendall p-value'])
-significant_rdms = rdm_statistics_df[rdm_statistics_df["Kendall p-value"]<=0.05]
+pos_corr_rdms =  rdm_statistics_df[rdm_statistics_df["Kendall tau"]>0]
+significant_rdms = pos_corr_rdms[pos_corr_rdms["Kendall p-value"]<=(0.05/2)]
 print(significant_rdms.sort_values(by="Kendall tau", ascending=False))
+
 # Calculate noise ceiling
 upper_ceiling_list = []
 lower_ceiling_list = []
@@ -117,7 +120,29 @@ for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
     lower_ceiling, upper_ceiling = rsa.calculateNoiseCeiling(EEG_RDM_list)
     lower_ceiling_list.append(lower_ceiling)
     upper_ceiling_list.append(upper_ceiling)
-x = [str(wind) for wind in windowed_eeg_rdm_dict.keys()]
-plt.plot(x, upper_ceiling_list)
-plt.fill_between(x, lower_ceiling_list, upper_ceiling_list, color='grey', alpha=.5)
+
+models = rdm_statistics_df['Model name'].unique()
+fig, axs = plt.subplots(3, 2, figsize=(10, 10))  # models.size)
+fig.suptitle('Correlation across time for different models', weight='bold')
+
+for i, model in enumerate(models):
+    model_df = rdm_statistics_df.loc[rdm_statistics_df['Model name'] == model]
+    t_arr = [t for t, _ in model_df['Time window'].values]
+
+    x = i % 3
+    y = int(i / 3)
+
+    axs[x][y].set_title(model)
+    axs[x][y].fill_between(t_arr, lower_ceiling_list, upper_ceiling_list, color='grey', alpha=.5)
+
+    sig_pts = [sig for sig, _ in significant_rdms.loc[rdm_statistics_df['Model name'] == model]['Time window'].values]
+    axs[x][y].plot(t_arr, model_df['Kendall tau'], marker='.', markeredgecolor='r', markerfacecolor='r',
+                   markevery=sig_pts)
+
+for ax in axs.flat:
+    ax.set(xlabel='Time (ms)', ylabel='Kendall tau')
+    ax.label_outer()
+
+fig.tight_layout()
+fig.subplots_adjust(top=0.92)
 plt.show()
