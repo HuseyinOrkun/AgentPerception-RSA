@@ -47,7 +47,7 @@ eeg_rdm_ready = False
 if eeg_rdm_fname + ".hdf5" in os.listdir(eeg_rdm_path):
     print("EEG RDMs with parameters with window size: {0} and distance: {1} is already created, loading from {2}".format(str(args.w_size) ,  args.eeg_rdm_dist_metric, eeg_rdm_path + eeg_rdm_fname))
     windowed_eeg_rdm_dict, attributes = rsa_io.load_from_hdf5(eeg_rdm_fname,eeg_rdm_path)
-    eeg_rdm_ready = True
+    eeg_rdm_ready = False
 
 # Print information message on which files are going to be used
 if eeg_rdm_ready:
@@ -84,13 +84,11 @@ if not eeg_rdm_ready:
         time_window_representations = rsa_io.build_eeg_data(subj_path, args.w_size)
 
         # traverse each window in time_window_representations and calculate rdm
-        # TODO: values of windowed_eeg_rdm_dict may be not a list
-        #  but 3d numpy array (n_subjects, n_conditions, n_conditions)
         for window, eeg_data in time_window_representations.items():
-            eeg_rdm_name = subj_name + '_eeg_rdm_' + str(window[0]) + ":" + str(window[1]) + "_" + args.eeg_rdm_dist_metric
+            eeg_rdm_name = subj_name + '_eeg_rdm_' + str(window[0]) + \
+                           ":" + str(window[1]) + "_" + args.eeg_rdm_dist_metric
             windowed_eeg_rdm_dict[window].append(rsa.create_rdm(eeg_data, args.eeg_rdm_dist_metric, eeg_rdm_name))
 
-    # TODO: try without vstackasd
     for window, eeg_rdm_list in windowed_eeg_rdm_dict.items():
         windowed_eeg_rdm_dict[window] = np.vstack(eeg_rdm_list)
 

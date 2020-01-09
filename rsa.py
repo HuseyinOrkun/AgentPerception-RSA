@@ -6,8 +6,8 @@ from sklearn.discriminant_analysis import _cov
 from sklearn.model_selection import LeaveOneOut
 from itertools import combinations
 from scipy.stats import rankdata
-
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 # Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
 # metric: A difference metric to compare activation patterns from {'hamming', 'mahalanobis'}
 # create rdm gives upper triangle
