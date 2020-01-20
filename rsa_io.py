@@ -13,11 +13,17 @@ from collections import defaultdict
 # Output: time_window_representations: Keys are time windows, Each value in the time_window_representations
 # is a 3D ndarray with size (n_conditions, n_trials, n_channels)
 
-def build_eeg_data(subject_action_mats_path, time_window_size):
+def build_eeg_data(subject_action_mats_path, time_window_size, subj_name):
+
+    agent_action_list = [
+        "robot-drink","robot-grasp","robot-handwave","robot-talk","robot-nudge",
+        "robot-paper","robot-turn","robot-wipe","android-drink","android-grasp","android-handwave",
+        "android-talk","android-nudge","android-paper","android-turn","android-wipe","human-drink",
+        "human-grasp","human-handwave","human-talk","human-nudge","human-paper","human-turn","human-wipe"]
 
     # get all the .mat files
-    subject_action_file_paths = [subject_action_mats_path + name
-                                 for name in os.listdir(subject_action_mats_path) if name.endswith('.mat')]
+    subject_action_file_paths = [subject_action_mats_path + subj_name + "_" + agent_action
+                                 for agent_action in agent_action_list]
 
     time_window_representations = defaultdict(list)
     max_n_trials = 0
@@ -32,8 +38,7 @@ def build_eeg_data(subject_action_mats_path, time_window_size):
         experiment_type = loaded_file["experiment_type"]
         action = loaded_file["action"]
         agent = loaded_file["agent"]
-
-        print("Input Type: {0}, Experiment Type: {2}, Action: {3}, Agent: {4}")
+        print("{0}, {1}".format(agent, action))
 
         # Check if total number of timepoints is divisable by time_window_size
         n_timepts = subj_agent_action.shape[1]

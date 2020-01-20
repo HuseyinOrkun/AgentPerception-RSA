@@ -39,20 +39,41 @@ eeg_rdm_path = args.save_path + "eegRDMs/"
 if not os.path.exists(eeg_rdm_path):
     os.makedirs(eeg_rdm_path)
 
+# Make a list of brain regions and do the analysis for each
+brain_regions = ['whole_brain',]
 
 # Check if eeg_rdm exists in eeg_rdm_path, meaning that experiment is already done with this w_size and eeg_rdm_distance
 windowed_eeg_rdm_dict = None
 eeg_rdm_fname = "eeg_rdm_" + str(args.w_size) + "_" + args.eeg_rdm_dist_metric
-eeg_rdm_ready = False
-if eeg_rdm_fname + ".hdf5" in os.listdir(eeg_rdm_path):
+if eeg_rdm_fname + ".hdf5x" in os.listdir(eeg_rdm_path):
     print("EEG RDMs with parameters with window size: {0} and distance: {1} is already created, loading from {2}".format(str(args.w_size) ,  args.eeg_rdm_dist_metric, eeg_rdm_path + eeg_rdm_fname))
     windowed_eeg_rdm_dict, attributes = rsa_io.load_from_hdf5(eeg_rdm_fname,eeg_rdm_path)
-    eeg_rdm_ready = False
 
-# Print information message on which files are going to be used
-if eeg_rdm_ready:
-    print("All rdms are already exist in {0} , loading already created rdms with window size: {1} and distance "
-          "metric: {2}".format(eeg_rdm_path, args.w_size, args.eeg_rdm_dist_metric))
+else:
+    # every key is time point and every value is a list of corresponding rdms of different subjects
+    windowed_eeg_rdm_dict = defaultdict(list)
+
+    # For all subjects do
+    for i, subject_folder in enumerate(subject_folders):
+        subj_name = subject_folder[0:6]
+        subj_path = args.eeg_root_path + subject_folder + "/action-mats/"
+
+        # Keys are time windows, Each value in the time_window_representations is a 3D ndarray
+        # with size (n_conditions, n_trials, n_channels). Since n_trials are not same for each condition,
+        # the missing values are filled with NaN.
+        time_window_representations = rsa_io.build_eeg_data(subj_path, args.w_size, subj_name)
+
+        # traverse each window in time_window_representations and calculate rdm
+        for window, eeg_data in time_window_representations.items():
+            eeg_rdm_name = subj_name + '_eeg_rdm_' + str(window[0]) + \
+                           ":" + str(window[1]) + "_" + args.eeg_rdm_dist_metric
+            windowed_eeg_rdm_dict[window].append(rsa.create_rdm(eeg_data, args.eeg_rdm_dist_metric, eeg_rdm_name))
+
+    for window, eeg_rdm_list in windowed_eeg_rdm_dict.items():
+        windowed_eeg_rdm_dict[window] = np.vstack(eeg_rdm_list)
+
+    # Save eeg rdms to hdf5 file
+    rsa_io.save_to_hdf5(windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, args.w_size, eeg_rdm_fname, eeg_rdm_path)
 
 # Check if every model rdm was already created in model_RDM_path if all model_rdms exists
 # No need to create all over, saves computation
@@ -69,31 +90,6 @@ for model_file in os.listdir(args.model_root_path):
                   " loading already created Model RDM ".format(model_name, args.model_rdm_dist_metric, model_RDM_path))
             model_RDM_dict[model_name] = rsa_io.load_rdm(model_RDM_path + model_name)
 
-if not eeg_rdm_ready:
-    # every key is time point and every value is a list of corresponding rdms of different subjects
-    windowed_eeg_rdm_dict = defaultdict(list)
-
-    # For all subjects do
-    for i, subject_folder in enumerate(subject_folders):
-        subj_name = subject_folder[0:6]
-        subj_path = args.eeg_root_path + subject_folder + "/action-mats/"
-
-        # Keys are time windows, Each value in the time_window_representations is a 3D ndarray
-        # with size (n_conditions, n_trials, n_channels). Since n_trials are not same for each condition,
-        # the missing values are filled with NaN.
-        time_window_representations = rsa_io.build_eeg_data(subj_path, args.w_size)
-
-        # traverse each window in time_window_representations and calculate rdm
-        for window, eeg_data in time_window_representations.items():
-            eeg_rdm_name = subj_name + '_eeg_rdm_' + str(window[0]) + \
-                           ":" + str(window[1]) + "_" + args.eeg_rdm_dist_metric
-            windowed_eeg_rdm_dict[window].append(rsa.create_rdm(eeg_data, args.eeg_rdm_dist_metric, eeg_rdm_name))
-
-    for window, eeg_rdm_list in windowed_eeg_rdm_dict.items():
-        windowed_eeg_rdm_dict[window] = np.vstack(eeg_rdm_list)
-
-    # Save eeg rdms to hdf5 file
-    rsa_io.save_to_hdf5(windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, args.w_size, eeg_rdm_fname, eeg_rdm_path)
 
 
 # Compare model and eeg rdms append to a list
