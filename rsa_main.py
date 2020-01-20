@@ -115,6 +115,12 @@ for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
     lower_ceiling_list.append(lower_ceiling)
     upper_ceiling_list.append(upper_ceiling)
 
+# visualization
+
+# Time winodws are sorted alphabetically in hdf5
+# Sort by time windows to sort numerically
+rdm_statistics_df = rdm_statistics_df.sort_values(by="Time window")
+
 models = rdm_statistics_df['Model name'].unique()
 fig, axs = plt.subplots(3, 2, figsize=(10, 10))  # models.size)
 fig.suptitle('Correlation across time for different models', weight='bold')
