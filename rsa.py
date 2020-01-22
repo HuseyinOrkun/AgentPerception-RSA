@@ -4,35 +4,34 @@ import numpy as np
 from scipy import stats
 from sklearn.discriminant_analysis import _cov
 from sklearn.model_selection import LeaveOneOut
-from itertools import combinations
-from scipy.stats import rankdata
-import matplotlib.pyplot as plt
 import seaborn as sns
-# Input: X ndarray, An m by n array of m original observations in an n-dimensional space.
-# metric: A difference metric to compare activation patterns from {'hamming', 'mahalanobis'}
-# create rdm gives upper triangle
-def create_rdm(X, metric, name, model=False, save_path=None):
-    # Calculate distance between eah row of X
-    # Condensed distance matrix RDM. For each i and j (where i < j < m),
-    # where m is the number of original observations.
-    # The metric dist(u=X[i], v=X[j]) is computed and stored in entry ij of RDM
+from scipy.stats import rankdata
+from itertools import combinations
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.use('Agg')
 
+
+# Input: X ndarray, (n_condition, n_trial, n_channel)
+# metric: distance metric
+# model: if the given input is from a model or eeg with trials,
+def create_rdm(X, metric, name, model=False, save_path=None):
     if "cv" not in metric:
         if not model:
-
             # average on the trial axis ignoring nan values, then calculate distance
             X = np.nanmean(X, axis=1)
 
-        RDM = pdist(X, metric)
-        RDM = squareform(RDM)
+        # Calculate distance between eah row of X
+        # Condensed distance matrix RDM. For each i and j (where i < j < m),
+        # where m is the number of original observations.
+        # The metric dist(u=X[i], v=X[j]) is computed and stored in entry ij of RDM
+        vector_RDM = pdist(X, metric)
 
     elif metric == "cv_mahalanobis":
         RDM = cv_mahalanobis(X)
     else:
         # RDM = np.full((X.shape[0], X.shape[0]), fill_value=np.nan)
         raise NotImplementedError
-
-    vector_RDM = vectorize(RDM)
     if save_path is not None:
         np.save(save_path + name, vector_RDM)
     return vector_RDM
@@ -91,7 +90,6 @@ def cv_mahalanobis(X, cv_scheme=LeaveOneOut()):
 
             RDM_list.append(RDM)
         # End of if
-
     RDM = np.mean(RDM_list, axis=0)
 
     return RDM
@@ -108,26 +106,29 @@ def correlate_models(model_rdm, eeg_rdm):
     return kendall_tau, kendall_p_value
 
 
-def calculateNoiseCeiling(refRDMs):
-    # Input: RDMs (List) of subjects as refRDMs, rank transform refRDMs, For upper level estimate take grand average and using  group average RDM
-    # get pairwise kentall tau correlations with subject RDMS and take average of kendall taus's, For lower level RDM, using LOO cross validation take pairwise
+def calculate_noise_ceiling(refRDMs):
+    # Input: RDMs (List) of subjects as refRDMs, rank transform refRDMs,
+    # For upper level estimate take grand average and using  group average RDM
+    # get pairwise kentall tau correlations with subject RDMS and take average of kendall taus's,
+    # For lower level RDM, using LOO cross validation take pairwise
     # distances between averaged train set RDMS and test set rdm then take average of kendall taus.
     # Output: Lower and upper level noise ceiling for visualization
 
     n_subjects = len(refRDMs)
-
+    ranked_ref_rdms = []
     # refRDMs is a list of upper triangle of RDM vectors
     for i, refRDM in enumerate(refRDMs):
-        refRDMs[i] = rankdata(refRDM)
+        ranked_ref_rdms.append(rankdata(refRDM))
 
     # Average rank transformed refRDMs, on subject dimension
-    avg_refRDM = np.mean(refRDMs, axis=0)
+    avg_refRDM = np.mean(ranked_ref_rdms, axis=0)
     RDM_corrs_upper = []
 
     # For all subjects, correlate avg_refRDM and subject rdm
     for subject_no in range(n_subjects):
+
         # Correlate avg of referance rdms with a single subject rdm
-        kendall_tau, p = correlate_models(avg_refRDM, refRDMs[subject_no])
+        kendall_tau, p = correlate_models(avg_refRDM, ranked_ref_rdms[subject_no])
 
         # Record kendall tau in a list
         RDM_corrs_upper.append(kendall_tau)
@@ -163,7 +164,6 @@ def visualizeRDM(vectorRDM, title, f_name):
     ax = sns.heatmap(RDM, cmap=cmap.tolist())
     ax.set_title(title)
     plt.savefig(f_name + '-RDM.png')
-
 
 if __name__ == '__main__':
     robot_drink = [1, 0, 0]

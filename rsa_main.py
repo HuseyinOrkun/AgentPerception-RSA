@@ -7,6 +7,8 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('eeg_root_path', type=str,
@@ -21,6 +23,11 @@ parser.add_argument("eeg_rdm_dist_metric",type=str,help="Distance metric to use 
 parser.add_argument("model_rdm_dist_metric",type=str,help="Distance metric to use to create model rdms")
 
 args = parser.parse_args()
+# Apply Bonferroni correction?
+correct = True
+
+# Apha value for statistical analysis
+alpha = 0.001
 subject_folders = [name for name in os.listdir(args.eeg_root_path) if
                    os.path.isdir(args.eeg_root_path + name) and name.startswith("subj")]
 n_subjects = len(subject_folders)
@@ -45,9 +52,9 @@ brain_regions = ['whole_brain',]
 # Check if eeg_rdm exists in eeg_rdm_path, meaning that experiment is already done with this w_size and eeg_rdm_distance
 windowed_eeg_rdm_dict = None
 eeg_rdm_fname = "eeg_rdm_" + str(args.w_size) + "_" + args.eeg_rdm_dist_metric
-if eeg_rdm_fname + ".hdf5x" in os.listdir(eeg_rdm_path):
+if eeg_rdm_fname + ".hdf5" in os.listdir(eeg_rdm_path):
     print("EEG RDMs with parameters with window size: {0} and distance: {1} is already created, loading from {2}".format(str(args.w_size) ,  args.eeg_rdm_dist_metric, eeg_rdm_path + eeg_rdm_fname))
-    windowed_eeg_rdm_dict, attributes = rsa_io.load_from_hdf5(eeg_rdm_fname,eeg_rdm_path)
+    windowed_eeg_rdm_dict, attributes = rsa_io.load_from_hdf5(eeg_rdm_fname, eeg_rdm_path)
 
 else:
     # every key is time point and every value is a list of corresponding rdms of different subjects
@@ -55,7 +62,7 @@ else:
 
     # For all subjects do
     for i, subject_folder in enumerate(subject_folders):
-        subj_name = subject_folder[0:6]
+        subj_name = subject_folder[0:9]
         subj_path = args.eeg_root_path + subject_folder + "/action-mats/"
 
         # Keys are time windows, Each value in the time_window_representations is a 3D ndarray
@@ -104,45 +111,52 @@ pd.options.display.width = 100
 rdm_statistics_df = pd.DataFrame(rdm_statistics_list,
                                  columns=['Model name', 'Time window', 'Kendall tau', 'Kendall p-value'])
 pos_corr_rdms =  rdm_statistics_df[rdm_statistics_df["Kendall tau"]>0]
-significant_rdms = pos_corr_rdms[pos_corr_rdms["Kendall p-value"]<=(0.05/2)]
+
+n_test = 1
+if correct:
+    n_test = 400
+significant_rdms = pos_corr_rdms[pos_corr_rdms["Kendall p-value"]/2 <= (alpha/n_test)]
 print(significant_rdms.sort_values(by="Kendall tau", ascending=False))
 
 # Calculate noise ceiling
-upper_ceiling_list = []
-lower_ceiling_list = []
-for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
-    lower_ceiling, upper_ceiling = rsa.calculateNoiseCeiling(EEG_RDM_list)
-    lower_ceiling_list.append(lower_ceiling)
-    upper_ceiling_list.append(upper_ceiling)
+#upper_ceiling_list = []
+#lower_ceiling_list = []
+#for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
+#    lower_ceiling, upper_ceiling = rsa.calculate_noise_ceiling(EEG_RDM_list)
+#    lower_ceiling_list.append(lower_ceiling)
+#    upper_ceiling_list.append(upper_ceiling)
 
-# visualization
 
 # Time winodws are sorted alphabetically in hdf5
 # Sort by time windows to sort numerically
 rdm_statistics_df = rdm_statistics_df.sort_values(by="Time window")
 
+# visualization
 models = rdm_statistics_df['Model name'].unique()
 fig, axs = plt.subplots(3, 2, figsize=(10, 10))  # models.size)
-fig.suptitle('Correlation across time for different models', weight='bold')
+fig.suptitle('Correlation across time for different models (metric: {0}) (Bonferroni corrected: {1}, alpha={2})'
+             .format(args.model_rdm_dist_metric, correct, alpha), weight='bold')
 
 for i, model in enumerate(models):
     model_df = rdm_statistics_df.loc[rdm_statistics_df['Model name'] == model]
-    t_arr = [t for t, _ in model_df['Time window'].values]
+    t_arr = [2 * (t - 100) for t, _ in model_df['Time window'].values]
 
     x = i % 3
     y = int(i / 3)
 
     axs[x][y].set_title(model)
-    axs[x][y].fill_between(t_arr, lower_ceiling_list, upper_ceiling_list, color='grey', alpha=.5)
-
+    # show starting understanding and chance level
+    axs[x][y].axvline(x=0, color='black', alpha=0.5, linestyle='--', label='end of baseline period')
+    #axs[x][y].fill_between(t_arr, lower_ceiling_list, upper_ceiling_list, color='grey', alpha=.5)
     sig_pts = [sig for sig, _ in significant_rdms.loc[rdm_statistics_df['Model name'] == model]['Time window'].values]
     axs[x][y].plot(t_arr, model_df['Kendall tau'], marker='.', markeredgecolor='r', markerfacecolor='r',
                    markevery=sig_pts)
 
 for ax in axs.flat:
     ax.set(xlabel='Time (ms)', ylabel='Kendall tau')
-    ax.label_outer()
+    # ax.label_outer()
 
 fig.tight_layout()
 fig.subplots_adjust(top=0.92)
-plt.show()
+fig.savefig(args.save_path + 'eeg_metric_' + args.eeg_rdm_dist_metric +
+            '_model_metric_' + args.model_rdm_dist_metric + '_Bonferroni_corrected_{0}_alpha={1}'.format(correct, alpha) + '_3by2.png')
