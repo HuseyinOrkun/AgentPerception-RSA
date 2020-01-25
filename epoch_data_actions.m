@@ -2,8 +2,9 @@ clc;
 clear;
 eeglab;
 %pth='/auto/data2/oelmas/EEG_AgentPerception_NAIVE/Data/';
-pth='/Users/huseyinelmas/Desktop/CCN-Lab/data/set_files/';
+pth='/Users/huseyinelmas/Desktop/CCN-Lab/data/set_test/';
 %pth='/home/sena/Desktop/set_test/';
+fprintf('File Name  File Path: \n');
 folders = dir(pth);
 robot = {'S101' 'S102' 'S103' 'S104' 'S105' 'S106' 'S107' 'S108'};
 actions = {'drink','grasp','handwave','talk','nudge','paper','turn','wipe'};
@@ -52,11 +53,10 @@ end
 brain_regions = {'central' 'frontal' 'occipital' 'parietal' 'temporal' 'whole_brain'};
 
 % Traverse subject folders
-for k=8:length(folders)%1:length(folders)
+for k=1:length(folders)%1:length(folders)
 	
 	% If it is a subject folder
 	if(folders(k).isdir && ~strcmp(folders(k).name,'.') && ~strcmp(folders(k).name,'..') )
-		
 		folder_name = folders(k).name;
 		subj_no = folder_name(8:9);													  % Subject folder names are renamed to "subjectXX_" from "subjXX_"
 		fprintf('Runnning for subject %s\n',subj_no)
@@ -66,7 +66,7 @@ for k=8:length(folders)%1:length(folders)
 
 		% Works if there is a .set file and only one .set file
 		for i=1:length(files)
-			if( isempty(strfind(files(i).name, ".set")) == 0)
+			if( isempty(strfind(files(i).name, convertCharsToStrings('.set'))) == 0)
 				original_set_file_name = files(i).name;
 			end
 		end
@@ -149,12 +149,12 @@ for k=8:length(folders)%1:length(folders)
 					[ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3,'savenew',strcat(save_path, 'steps/subj', subj_no , '_', title, '_step3_chnl.set'),'overwrite','on','gui','off'); 
 
 					% Saving the data into a struct to be able to give a proper 
-					eeg_data.("eeg_data") = EEG.data;
-					eeg_data.("subj_no") = subj_no;
-					eeg_data.("agent") = agent;
-					eeg_data.("experiment_type") = exp_type;
-					eeg_data.("input_type") = mode;
-					eeg_data.("action") = char(actions(j));
+					eeg_data.(convertCharsToStrings('eeg_data')) = EEG.data;
+					eeg_data.(convertCharsToStrings('subj_no')) = subj_no;
+					eeg_data.(convertCharsToStrings('agent')) = agent;
+					eeg_data.(convertCharsToStrings('experiment_type')) = exp_type;
+					eeg_data.(convertCharsToStrings('input_type')) = mode;
+					eeg_data.(convertCharsToStrings('action')) = char(actions(j));
 					save(strcat(save_path, 'action-mats/subject',subj_no,'_',title,'.mat'), '-struct','eeg_data');
 				end % action no
 			end % agentlist

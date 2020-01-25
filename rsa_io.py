@@ -92,8 +92,9 @@ def load_rdm(filename):
 
 
 # Given the dictionary of eeg_rdms of all subject, save numpy files in a h5df format
-def save_to_hdf5(windowed_eeg_rdm_dict, distance_metric, w_size, name, path):
+def save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, distance_metric, w_size, name, path):
     with h5py.File(path + name + ".hdf5", "w") as f:
+        f.attrs["electrode_region"] = electrode_region
         f.attrs["w_size"] = w_size
         f.attrs["distance_metric"] = distance_metric
         for time_window, eeg_rdm_np in windowed_eeg_rdm_dict.items():
