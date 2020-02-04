@@ -63,7 +63,7 @@ for model_file in os.listdir(args.model_root_path):
             model_RDM_dict[model_name] = rsa_io.load_rdm(model_RDM_path + model_name)
 
 # Make a list of brain regions and do the analysis, also add whole_brain i didn't have those files
-electrode_regions =['central', 'frontal', 'occipital','parietal', 'temporal']
+electrode_regions = ['central', 'frontal', 'occipital','parietal', 'temporal']
 for electrode_region in electrode_regions:
 
     # Check if eeg_rdm exists in eeg_rdm_path, meaning that experiment is already done with this w_size and eeg_rdm_distance
