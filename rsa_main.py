@@ -10,6 +10,10 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows',None)
+pd.set_option('display.width', None)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('eeg_root_path', type=str,
                     help='Path to save the results of the experiment')
@@ -23,19 +27,17 @@ parser.add_argument("eeg_rdm_dist_metric",type=str,help="Distance metric to use 
 parser.add_argument("model_rdm_dist_metric",type=str,help="Distance metric to use to create model rdms")
 
 args = parser.parse_args()
+
 # Apply Bonferroni correction?
-correct = True
+bonferroni_correction = True
 
 # Apha value for statistical analysis
 alpha = 0.001
+
+# get the folders of subjects
 subject_folders = [name for name in os.listdir(args.eeg_root_path) if
                    os.path.isdir(args.eeg_root_path + name) and name.startswith("subj")]
 n_subjects = len(subject_folders)
-
-
-pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows',None)
-pd.set_option('display.width', None)
 
 # Create modelRDMs folder in models if not exists
 model_RDM_path = args.save_path + "modelRDMs/"
@@ -63,7 +65,7 @@ for model_file in os.listdir(args.model_root_path):
             model_RDM_dict[model_name] = rsa_io.load_rdm(model_RDM_path + model_name)
 
 # Make a list of brain regions and do the analysis, also add whole_brain i didn't have those files
-electrode_regions = ['central', 'frontal', 'occipital','parietal', 'temporal']
+electrode_regions = ['central', 'frontal', 'occipital','parietal', 'temporal', 'whole_brain']
 for electrode_region in electrode_regions:
 
     # Check if eeg_rdm exists in eeg_rdm_path, meaning that experiment is already done with this w_size and eeg_rdm_distance

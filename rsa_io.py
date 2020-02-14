@@ -79,7 +79,7 @@ def load_model(file_path):
         model = pd.read_csv(file_path, index_col=0, skiprows=[0])
     elif extension == '.mat':
         print("Warning this is not yet tested")
-        model = sio.loadmat(file_path)['model']
+        model = sio.loadmat(file_path)
     elif extension == '.np':
         print("Warning this is not yet tested")
         model = sio.loadmat(file_path)['model']

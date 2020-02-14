@@ -1,5 +1,6 @@
 clc;
 clear;
+addpath('/auto/k2/oelmas/eeglab14_1_2b')
 eeglab;
 %pth='/auto/data2/oelmas/EEG_AgentPerception_NAIVE/Data/';
 pth='/Users/huseyinelmas/Desktop/CCN-Lab/data/set_test/';
@@ -29,14 +30,13 @@ F_channels = {'F1','F2','Fz','F3','F4', 'AF3','AF4','AF7','AF8','AFz', 'Fp1','Fp
 
 T_channels = {'T7','T8','FT9','FT10','FT7','FT8'};
 
-with_actions = false;
 agent_list = containers.Map;
 agent_list('robot') = robot;
 agent_list('android') = android;
 agent_list('human') = human;
 mode = 'video';
 exp_type = 'naive';
-
+extract_actions = true;
 %Bin 2
 %Android video  
 %.{111;112;113;114;115;116;117;118}
@@ -44,16 +44,15 @@ exp_type = 'naive';
 %Bin 3
 %Human video
 %.{121;122;123;124;125;126;127;128}
-if(with_actions)
-	action_no = 1; 
+if(extract_actions)
+    action_no =  length(actions);
 else
-	action_no =  length(actions);
+    action_no = 1;
 end
-
 brain_regions = {'central' 'frontal' 'occipital' 'parietal' 'temporal' 'whole_brain'};
 
 % Traverse subject folders
-for k=1:length(folders)%1:length(folders)
+for k=1:length(folders)
 	
 	% If it is a subject folder
 	if(folders(k).isdir && ~strcmp(folders(k).name,'.') && ~strcmp(folders(k).name,'..') )
@@ -66,7 +65,7 @@ for k=1:length(folders)%1:length(folders)
 
 		% Works if there is a .set file and only one .set file
 		for i=1:length(files)
-			if( isempty(strfind(files(i).name, convertCharsToStrings('.set'))) == 0)
+			if( isempty(strfind(files(i).name, '.set')) == 0)
 				original_set_file_name = files(i).name;
 			end
 		end
@@ -98,15 +97,14 @@ for k=1:length(folders)%1:length(folders)
 				fprintf('Runnning for agent: %s\n',agent)
 
 				for j=1:action_no 
-
-					if(with_actions)
-						epochs = agent_list(agent);
-						title = agent;
-					else
+					if(extract_actions)
 						temp = agent_list(agent);
 						fprintf('And action: %s\n',char(actions(j)))
 						epochs = temp(j);
 						title = strcat(agent,'-',char(actions(j))); 
+                    else
+                        epochs = agent_list(agent);
+						title = agent;
 					end
 
 					% Epoching
@@ -139,7 +137,6 @@ for k=1:length(folders)%1:length(folders)
 						% Whole brain (all channels)
 						case 6									 
 							channels = whole_brain_channels;
-							continue;
 						otherwise
 							disp('Error!')
 
@@ -147,14 +144,13 @@ for k=1:length(folders)%1:length(folders)
 
 					EEG = pop_select( EEG,'channel', channels);
 					[ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3,'savenew',strcat(save_path, 'steps/subj', subj_no , '_', title, '_step3_chnl.set'),'overwrite','on','gui','off'); 
-
 					% Saving the data into a struct to be able to give a proper 
-					eeg_data.(convertCharsToStrings('eeg_data')) = EEG.data;
-					eeg_data.(convertCharsToStrings('subj_no')) = subj_no;
-					eeg_data.(convertCharsToStrings('agent')) = agent;
-					eeg_data.(convertCharsToStrings('experiment_type')) = exp_type;
-					eeg_data.(convertCharsToStrings('input_type')) = mode;
-					eeg_data.(convertCharsToStrings('action')) = char(actions(j));
+					eeg_data.eeg_data = EEG.data;
+					eeg_data.subj_no = subj_no;
+					eeg_data.agent = agent;
+					eeg_data.experiment_type = exp_type;
+					eeg_data.input_type = mode;
+					eeg_data.action = char(actions(j));
 					save(strcat(save_path, 'action-mats/subject',subj_no,'_',title,'.mat'), '-struct','eeg_data');
 				end % action no
 			end % agentlist
