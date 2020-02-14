@@ -48,7 +48,7 @@ for i=1:length(stimuli)
 
            max_pooled = max(gaborMag,  [], 3); 
            
-           gabor_movie(k,:,:,frame_index) = max_pooled;
+           gabor_movie(k,:,:,mod(frame_index, N/M)+1) = max_pooled;
 
            if(mod(frame_index, N/M) == 0)
                 avg_pooled = mean(squeeze(gabor_movie( k, :, :, :)), 3);
@@ -57,10 +57,8 @@ for i=1:length(stimuli)
                 gabor_column_vectorized = reshape(avg_pooled, 1, []);
                 start = end_+1;
                 end_ = start+size(gabor_column_vectorized, 2)-1;
-                gabor_model(i, start : end_) = gabor_column_vectorized ;
+                gabor_model(i, start : end_) = gabor_column_vectorized;
            end
-
-
         end
         frame_index = frame_index+1;
 
