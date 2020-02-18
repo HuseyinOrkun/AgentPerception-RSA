@@ -10,10 +10,6 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows',None)
-pd.set_option('display.width', None)
-
 parser = argparse.ArgumentParser()
 parser.add_argument('eeg_root_path', type=str,
                     help='Path to save the results of the experiment')
@@ -29,15 +25,18 @@ parser.add_argument("model_rdm_dist_metric",type=str,help="Distance metric to us
 args = parser.parse_args()
 
 # Apply Bonferroni correction?
-bonferroni_correction = True
+correct = True
 
 # Apha value for statistical analysis
 alpha = 0.001
-
-# get the folders of subjects
 subject_folders = [name for name in os.listdir(args.eeg_root_path) if
                    os.path.isdir(args.eeg_root_path + name) and name.startswith("subj")]
 n_subjects = len(subject_folders)
+
+
+#pd.set_option('display.max_columns', None)
+#pd.set_option('display.max_rows',None)
+#pd.set_option('display.width', None)
 
 # Create modelRDMs folder in models if not exists
 model_RDM_path = args.save_path + "modelRDMs/"
@@ -57,7 +56,7 @@ for model_file in os.listdir(args.model_root_path):
         model_name = os.path.splitext(model_file)[0] + "_" + args.model_rdm_dist_metric
         if not model_name + '.npy' in os.listdir(model_RDM_path):
             model = rsa_io.load_model(file_path=args.model_root_path + model_file)
-            model_RDM_dict[model_name] = rsa.create_rdm(model, metric=args.model_rdm_dist_metric, name=model_name,
+            model_RDM_dict[model_name] = rsa.create_rdm(model.values, metric=args.model_rdm_dist_metric, name=model_name,
                                                         save_path=model_RDM_path, model=True)
         else:
             print("Model RDM for {0} with distance metric: {1} was found in {2},"
@@ -65,7 +64,8 @@ for model_file in os.listdir(args.model_root_path):
             model_RDM_dict[model_name] = rsa_io.load_rdm(model_RDM_path + model_name)
 
 # Make a list of brain regions and do the analysis, also add whole_brain i didn't have those files
-electrode_regions = ['central', 'frontal', 'occipital','parietal', 'temporal', 'whole_brain']
+electrode_regions = ['central', 'frontal', 'parietal', 'temporal', 'whole_brain']
+#electrode_regions = ['occipital']
 for electrode_region in electrode_regions:
 
     # Check if eeg_rdm exists in eeg_rdm_path, meaning that experiment is already done with this w_size and eeg_rdm_distance
@@ -116,7 +116,7 @@ for electrode_region in electrode_regions:
     pos_corr_rdms =  rdm_statistics_df[rdm_statistics_df["Kendall tau"]>0]
 
     n_test = 1
-    if bonferroni_correction:
+    if correct:
         n_test = 400
     significant_rdms = pos_corr_rdms[pos_corr_rdms["Kendall p-value"]/2 <= (alpha/n_test)]
     print(significant_rdms.sort_values(by="Kendall tau", ascending=False))
@@ -136,30 +136,31 @@ for electrode_region in electrode_regions:
 
     # visualization
     models = rdm_statistics_df['Model name'].unique()
-    fig, axs = plt.subplots(3, 2, figsize=(10, 10))  # models.size)
-    fig.suptitle('Correlation across time for different models (metric: {0}) (Bonferroni corrected: {1}, alpha={2}) Electrode Region: {3}'
-                 .format(args.model_rdm_dist_metric, bonferroni_correction, alpha, electrode_region), weight='bold')
+    fig, axs = plt.subplots(models.size, figsize=(10, 40))
+    fig.suptitle('Correlation across time for different models \n(metric: {0})\n (Bonferroni corrected: {1})\n (Channels: {2})'.format(args.eeg_rdm_dist_metric, correct, electrode_region), weight='bold')
 
     for i, model in enumerate(models):
         model_df = rdm_statistics_df.loc[rdm_statistics_df['Model name'] == model]
-        t_arr = [2 * (t - 100) for t, _ in model_df['Time window'].values]
+        t_arr = [2*(t-100) for t, _ in model_df['Time window'].values]
 
-        x = i % 3
-        y = int(i / 3)
+        axs[i].set_title(model)
+        # axs[i].fill_between(t_arr, lower_ceiling_list, upper_ceiling_list, color='grey', alpha=.5)
 
-        axs[x][y].set_title(model)
-        # show starting understanding and chance level
-        axs[x][y].axvline(x=0, color='black', alpha=0.5, linestyle='--', label='end of baseline period')
-        #axs[x][y].fill_between(t_arr, lower_ceiling_list, upper_ceiling_list, color='grey', alpha=.5)
-        sig_pts = [sig for sig, _ in significant_rdms.loc[rdm_statistics_df['Model name'] == model]['Time window'].values]
-        axs[x][y].plot(t_arr, model_df['Kendall tau'], marker='.', markeredgecolor='r', markerfacecolor='r',
-                       markevery=sig_pts)
+
+        sig_pts = [sig for sig, _ in
+                   significant_rdms.loc[rdm_statistics_df['Model name'] == model]['Time window'].values]
+        axs[i].plot(t_arr, model_df['Kendall tau'], marker='.', markeredgecolor='r', markerfacecolor='r',
+                    markevery=sig_pts)
+
 
     for ax in axs.flat:
         ax.set(xlabel='Time (ms)', ylabel='Kendall tau')
+        ax.axvline(x=0, color='black', alpha=0.5, linestyle='--', label='end of baseline period')
+
         # ax.label_outer()
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.92)
+    fig.subplots_adjust(top=0.95)
+
     fig.savefig(args.save_path + 'eeg_metric_' + args.eeg_rdm_dist_metric +
-                '_model_metric_' + args.model_rdm_dist_metric + '_Bonferroni_corrected_{0}_alpha={1}_{2}'.format(correct, alpha, electrode_region) + '_3by2.png')
+                '_model_metric_' + args.model_rdm_dist_metric + '_Bonferroni_corrected_{0}_alpha={1}_{2}'.format(correct, alpha, electrode_region) + '.png')
