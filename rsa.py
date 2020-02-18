@@ -28,7 +28,7 @@ def create_rdm(X, metric, name, model=False, save_path=None):
         vector_RDM = pdist(X, metric)
 
     elif metric == "cv_mahalanobis":
-        RDM = cv_mahalanobis(X)
+        vector_RDM = cv_mahalanobis(X)
     else:
         # RDM = np.full((X.shape[0], X.shape[0]), fill_value=np.nan)
         raise NotImplementedError
@@ -92,7 +92,7 @@ def cv_mahalanobis(X, cv_scheme=LeaveOneOut()):
         # End of if
     RDM = np.mean(RDM_list, axis=0)
 
-    return RDM
+    return vectorize(RDM)
 
 
 # Should we really concat upper and lower triangles

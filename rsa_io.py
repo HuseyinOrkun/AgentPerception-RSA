@@ -76,14 +76,12 @@ def load_model(file_path):
     extension = os.path.splitext(os.path.basename(file_path))[1]
     model = None
     if extension == '.csv':
-        model = pd.read_csv(file_path, index_col=0, skiprows=[0])
+        model = pd.read_csv(file_path, index_col=0, skiprows=[0]).values
     elif extension == '.mat':
-        print("Warning this is not yet tested")
-        model = sio.loadmat(file_path)
+        model = sio.loadmat(file_path)['data']
     elif extension == '.np':
         print("Warning this is not yet tested")
         model = sio.loadmat(file_path)['model']
-
     return model
 
 

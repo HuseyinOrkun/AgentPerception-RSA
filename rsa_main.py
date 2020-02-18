@@ -57,7 +57,7 @@ for model_file in os.listdir(args.model_root_path):
         model_name = os.path.splitext(model_file)[0] + "_" + args.model_rdm_dist_metric
         if not model_name + '.npy' in os.listdir(model_RDM_path):
             model = rsa_io.load_model(file_path=args.model_root_path + model_file)
-            model_RDM_dict[model_name] = rsa.create_rdm(model.values, metric=args.model_rdm_dist_metric, name=model_name,
+            model_RDM_dict[model_name] = rsa.create_rdm(model, metric=args.model_rdm_dist_metric, name=model_name,
                                                         save_path=model_RDM_path, model=True)
         else:
             print("Model RDM for {0} with distance metric: {1} was found in {2},"
@@ -116,7 +116,7 @@ for electrode_region in electrode_regions:
     pos_corr_rdms =  rdm_statistics_df[rdm_statistics_df["Kendall tau"]>0]
 
     n_test = 1
-    if correct:
+    if bonferroni_correction:
         n_test = 400
     significant_rdms = pos_corr_rdms[pos_corr_rdms["Kendall p-value"]/2 <= (alpha/n_test)]
     print(significant_rdms.sort_values(by="Kendall tau", ascending=False))
@@ -138,7 +138,7 @@ for electrode_region in electrode_regions:
     models = rdm_statistics_df['Model name'].unique()
     fig, axs = plt.subplots(3, 2, figsize=(10, 10))  # models.size)
     fig.suptitle('Correlation across time for different models (metric: {0}) (Bonferroni corrected: {1}, alpha={2}) Electrode Region: {3}'
-                 .format(args.model_rdm_dist_metric, correct, alpha, electrode_region), weight='bold')
+                 .format(args.model_rdm_dist_metric, bonferroni_correction, alpha, electrode_region), weight='bold')
 
     for i, model in enumerate(models):
         model_df = rdm_statistics_df.loc[rdm_statistics_df['Model name'] == model]
