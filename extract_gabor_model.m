@@ -36,7 +36,7 @@ for i=1:length(stimuli)
     
     v = VideoReader(strcat(input_path, stimuli(i), '_new.avi') );
     
-    frame_index= 1;
+    frame_index =  1;
     end_ = 0;
 
     while hasFrame(v)  
@@ -48,7 +48,7 @@ for i=1:length(stimuli)
 
            max_pooled = max(gaborMag,  [], 3); 
            
-           gabor_movie(k,:,:,mod(frame_index, N/M)+1) = max_pooled;
+           gabor_movie(k,:,:,mod(frame_index-1, N/M)+1) = max_pooled;
 
            if(mod(frame_index, N/M) == 0)
                 avg_pooled = mean(squeeze(gabor_movie( k, :, :, :)), 3);
@@ -61,7 +61,6 @@ for i=1:length(stimuli)
            end
         end
         frame_index = frame_index+1;
-
     end
 end
 
