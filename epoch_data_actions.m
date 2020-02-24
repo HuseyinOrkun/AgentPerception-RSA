@@ -3,14 +3,24 @@ clear;
 addpath('/auto/k2/oelmas/eeglab14_1_2b')
 eeglab;
 %pth='/auto/data2/oelmas/EEG_AgentPerception_NAIVE/Data/';
-pth='/Users/huseyinelmas/Desktop/CCN-Lab/data/set_test/';
+pth='/Users/huseyinelmas/Desktop/CCN-Lab/data/still_data/';
 %pth='/home/sena/Desktop/set_test/';
 fprintf('File Name  File Path: \n');
 folders = dir(pth);
-robot = {'S101' 'S102' 'S103' 'S104' 'S105' 'S106' 'S107' 'S108'};
 actions = {'drink','grasp','handwave','talk','nudge','paper','turn','wipe'};
-android = {'S111' 'S112' 'S113'  'S114' 'S115' 'S116'  'S117' 'S118'};
-human = {'S121' 'S122' 'S123'  'S124' 'S125' 'S126'  'S127' 'S128'};
+% Epochs for naive data
+%robot = {'S101' 'S102' 'S103' 'S104' 'S105' 'S106' 'S107' 'S108'};
+%android = {'S111' 'S112' 'S113'  'S114' 'S115' 'S116'  'S117' 'S118'};
+%human = {'S121' 'S122' 'S123'  'S124' 'S125' 'S126'  'S127' 'S128'};
+% Epochs for Prior data
+%robot = {'S151' 'S152' 'S153' 'S154' 'S155' 'S156' 'S157' 'S158'};
+%android = {'S161' 'S162' 'S163'  'S164' 'S165' 'S166'  'S167' 'S168'};
+%human = {'S171' 'S172' 'S173'  'S174' 'S175' 'S176'  'S177' 'S178'};
+%Epochs for still data
+robot = {'S 51' 'S 52' 'S 53' 'S 54' 'S 55' 'S 56' 'S 57' 'S 58'};
+android = {'S 61' 'S 62' 'S 63'  'S 64' 'S 65' 'S 66'  'S 67' 'S 68'};
+human = {'S 71' 'S 72' 'S 73'  'S 74' 'S 75' 'S 76'  'S 77' 'S 78'};
+
 whole_brain_channels = {'Fp1', 'Fz', 'F3', 'F7', 'FT9', 'FC5' ,'FC1', 'C3', 'T7', 'CP5', 'CP1'...
 	'Pz' ,'P3' ,'P7' ,'O1' ,'Oz' ,'O2' ,'P4', 'P8' ,'CP6' ,'CP2' ,'Cz' ,'C4' ,'T8' ...
 	'FT10', 'FC6', 'FC2', 'F4', 'F8', 'Fp2', 'AF7', 'AF3', 'AFz', 'F1', 'F5', 'FT7'...
@@ -34,7 +44,12 @@ agent_list = containers.Map;
 agent_list('robot') = robot;
 agent_list('android') = android;
 agent_list('human') = human;
-mode = 'video';
+mode = 'still';
+if(strcmp(mode,'video'))
+    key='video';
+else
+    key='ff';
+end
 exp_type = 'naive';
 extract_actions = true;
 %Bin 2
@@ -63,16 +78,22 @@ for k=1:length(folders)
 		subj_folder_path = strcat(pth,folder_name,'/' );
 		files = dir(subj_folder_path);
 
-		% Works if there is a .set file and only one .set file
+		noOfCorrectFiles = 0;
+        % Works if there is a .set file and only one .set file
 		for i=1:length(files)
-			if( isempty(strfind(files(i).name, '.set')) == 0)
+			if((strcmp(exp_type,'prior') && isempty(strfind(files(i).name, '.set')) == 0) || (isempty(strfind(files(i).name, '.set'))==0 && isempty(strfind(files(i).name, key)) == 0))
 				original_set_file_name = files(i).name;
-			end
-		end
-
+                noOfCorrectFiles = noOfCorrectFiles + 1;
+            end
+        end
+        if(noOfCorrectFiles >1)
+            error('More than 1 set file that has video or ff in file name');
+        end
+        
 		fprintf('File Name: %s  File Path: %s\n', original_set_file_name,subj_folder_path);
         
         EEG = pop_loadset('filename',original_set_file_name,'filepath',subj_folder_path);
+        
         % Store the original EEG data in dataset number 0 
         [ALLEEG, EEG, CURRENTSET] = eeg_store( ALLEEG, EEG, 0 );
         orig_EEG = eeg_checkset( EEG );

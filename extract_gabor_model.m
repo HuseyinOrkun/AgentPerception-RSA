@@ -35,8 +35,9 @@ gabor_movie = zeros(length(wavelength), 400, 400, N/M);
 for i=1:length(stimuli)
     
     v = VideoReader(strcat(input_path, stimuli(i), '_new.avi') );
-    
-    frame_index= 1;
+    n_frames = v.Duration*v.FrameRate;
+    fprintf("Video of subject: %d, stimuli: %s, has %f frames \n",i,stimuli(i), v.Duration*v.FrameRate)
+    frame_index =  1;
     end_ = 0;
 
     while hasFrame(v)  
@@ -48,9 +49,9 @@ for i=1:length(stimuli)
 
            max_pooled = max(gaborMag,  [], 3); 
            
-           gabor_movie(k,:,:,mod(frame_index, N/M)+1) = max_pooled;
+           gabor_movie(k,:,:,mod(frame_index-1, N/M)+1) = max_pooled;
 
-           if(mod(frame_index, N/M) == 0)
+           if(mod(frame_index, N/M) == 0 ||  (n_frames == 59 && frame_index==59))
                 avg_pooled = mean(squeeze(gabor_movie( k, :, :, :)), 3);
 
                 % reshape(gaborMag, [size(gaborMag,1)*size(gaborMag,1) size(gaborMag,3)]);
@@ -61,7 +62,6 @@ for i=1:length(stimuli)
            end
         end
         frame_index = frame_index+1;
-
     end
 end
 
