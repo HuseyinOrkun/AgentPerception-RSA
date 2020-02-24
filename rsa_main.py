@@ -2,12 +2,15 @@
 from collections import defaultdict
 import rsa_io
 import rsa
+import rsa_visualization as vis
 import argparse
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
+import pickle
+
 mpl.use('Agg')
 
 parser = argparse.ArgumentParser()
@@ -52,11 +55,14 @@ if not os.path.exists(eeg_rdm_path):
 # No need to create all over, saves computation
 model_RDM_dict = {}
 for model_file in os.listdir(args.model_root_path):
+
     if not model_file.startswith("."):
-        model_name = os.path.splitext(model_file)[0] + "_" + args.model_rdm_dist_metric
+        metric = args.model_rdm_dist_metric if 'gabor' not in model_file and 'optic' not in model_file else 'correlation'
+
+        model_name = os.path.splitext(model_file)[0] + "_" + metric
         if not model_name + '.npy' in os.listdir(model_RDM_path):
             model = rsa_io.load_model(file_path=args.model_root_path + model_file)
-            model_RDM_dict[model_name] = rsa.create_rdm(model.values, metric=args.model_rdm_dist_metric, name=model_name,
+            model_RDM_dict[model_name] = rsa.create_rdm(model, metric=metric, name=model_name,
                                                         save_path=model_RDM_path, model=True)
         else:
             print("Model RDM for {0} with distance metric: {1} was found in {2},"
@@ -134,33 +140,14 @@ for electrode_region in electrode_regions:
     # Sort by time windows to sort numerically
     rdm_statistics_df = rdm_statistics_df.sort_values(by="Time window")
 
-    # visualization
-    models = rdm_statistics_df['Model name'].unique()
-    fig, axs = plt.subplots(models.size, figsize=(10, 40))
-    fig.suptitle('Correlation across time for different models \n(metric: {0})\n (Bonferroni corrected: {1})\n (Channels: {2})'.format(args.eeg_rdm_dist_metric, correct, electrode_region), weight='bold')
+    # Saving the objects:
+    with open(args.save_path+electrode_region+'_results.pkl', 'wb') as f:
+        pickle.dump([rdm_statistics_df, significant_rdms,
+                         args.eeg_rdm_dist_metric, args.model_rdm_dist_metric,
+                         correct, alpha, electrode_region], f)
 
-    for i, model in enumerate(models):
-        model_df = rdm_statistics_df.loc[rdm_statistics_df['Model name'] == model]
-        t_arr = [2*(t-100) for t, _ in model_df['Time window'].values]
-
-        axs[i].set_title(model)
-        # axs[i].fill_between(t_arr, lower_ceiling_list, upper_ceiling_list, color='grey', alpha=.5)
+    #vis.visualize_matplotlib(rdm_statistics_df, significant_rdms, args.save_path,
+    #                     args.eeg_rdm_dist_metric, args.model_rdm_dist_metric,
+    #                     correct, alpha, electrode_region)
 
 
-        sig_pts = [sig for sig, _ in
-                   significant_rdms.loc[rdm_statistics_df['Model name'] == model]['Time window'].values]
-        axs[i].plot(t_arr, model_df['Kendall tau'], marker='.', markeredgecolor='r', markerfacecolor='r',
-                    markevery=sig_pts)
-
-
-    for ax in axs.flat:
-        ax.set(xlabel='Time (ms)', ylabel='Kendall tau')
-        ax.axvline(x=0, color='black', alpha=0.5, linestyle='--', label='end of baseline period')
-
-        # ax.label_outer()
-
-    fig.tight_layout()
-    fig.subplots_adjust(top=0.95)
-
-    fig.savefig(args.save_path + 'eeg_metric_' + args.eeg_rdm_dist_metric +
-                '_model_metric_' + args.model_rdm_dist_metric + '_Bonferroni_corrected_{0}_alpha={1}_{2}'.format(correct, alpha, electrode_region) + '.png')
