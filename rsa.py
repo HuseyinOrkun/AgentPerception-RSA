@@ -4,7 +4,6 @@ import numpy as np
 from scipy import stats
 from sklearn.discriminant_analysis import _cov
 from sklearn.model_selection import LeaveOneOut
-import seaborn as sns
 from scipy.stats import rankdata
 from itertools import combinations
 import matplotlib.pyplot as plt
@@ -155,15 +154,6 @@ def calculate_noise_ceiling(refRDMs):
     return lower_ceiling, upper_ceiling
 
 
-def visualizeRDM(vectorRDM, title, f_name):
-    RDM = squareform(vectorRDM)
-    fig, ax = plt.subplots()
-    colorData = io.loadmat('colorData.mat')
-    cmap = np.flipud(colorData['Blues9'])
-    cmap = cmap[1:, :]
-    ax = sns.heatmap(RDM, cmap=cmap.tolist())
-    ax.set_title(title)
-    plt.savefig(f_name + '-RDM.png')
 
 if __name__ == '__main__':
     robot_drink = [1, 0, 0]

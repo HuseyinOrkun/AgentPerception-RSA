@@ -3,7 +3,8 @@ clear;
 addpath('/auto/k2/oelmas/eeglab14_1_2b')
 eeglab;
 %pth='/auto/data2/oelmas/EEG_AgentPerception_NAIVE/Data/';
-pth='/Users/huseyinelmas/Desktop/CCN-Lab/data/still_data/';
+ls
+pth='/Users/huseyinelmas/Desktop/CCN-Lab/data/Naive/Still/';
 %pth='/home/sena/Desktop/set_test/';
 fprintf('File Name  File Path: \n');
 folders = dir(pth);
@@ -44,8 +45,8 @@ agent_list = containers.Map;
 agent_list('robot') = robot;
 agent_list('android') = android;
 agent_list('human') = human;
-mode = 'still';
-if(strcmp(mode,'video'))
+mode = 'Still';
+if(strcmp(mode,'Video'))
     key='video';
 else
     key='ff';

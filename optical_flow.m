@@ -19,23 +19,24 @@ stimuli = [ "robot_drink"; "robot_pick"; "robot_handwave"; "robot_talk"; "robot_
             "android_drink"; "android_pick"; "android_handwave"; "android_talk"; "android_nudge"; "android_paper"; "android_turn"; "android_clean"; ...
             "human_drink"; "human_pick"; "human_handwave"; "human_talk"; "human_nudge"; "human_paper"; "human_turn"; "human_clean"];
 flow_model = NaN(length(stimuli), 400*400*2*M);
-flow_movie = NaN(400, 2*400, N/M);
+flow_temp = NaN(400, 2*400, N/M);
 for i=1:length(stimuli)
     v = VideoReader(strcat(input_path, stimuli(i), '_new.avi'));
     n_frames = v.Duration*v.FrameRate;
-    fprintf("Video of subject: %d, stimuli: %s, has %f frames \n",i,stimuli(i), v.Duration*v.FrameRate)
+    fprintf("Video of stimuli: %s, has %f frames \n", stimuli(i), v.Duration*v.FrameRate)
     frame_index = 1;
     end_ = 0;
     while hasFrame(v)  
         frame = readFrame(v);
         bw_frame = rgb2gray(frame);
         flow = estimateFlow(opticFlow,bw_frame);
+        
         % Appending all variables of flow into a vector, will only consider
         %magnitude and orientation now
         % vect_flow = reshape(cat(dim,flow.Vx,flow.Vy,flow.Orientation,flow.Magnitude),1,[]);
-        flow_movie(:,:,mod(frame_index-1, N/M)+1) = cat(2, flow.Magnitude, flow.Orientation);
-        if((mod(frame_index, N/M) == 0) ||  (n_frames == 59 && frame_index==59))
-            flow_column_vectorized = reshape(mean(flow_movie, 3), 1, []);
+        flow_temp(:,:,mod(frame_index-1, N/M)+1) = cat(2, flow.Magnitude, flow.Orientation);
+        if((mod(frame_index, N/M) == 0) ||  (n_frames == 59 && frame_index == 59))
+            flow_column_vectorized = reshape(mean(flow_temp, 3), 1, []);
             start = end_+1;
             end_ = start+size(flow_column_vectorized, 2)-1;
             flow_model(i, start : end_) = flow_column_vectorized;

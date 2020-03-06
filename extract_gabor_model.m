@@ -36,7 +36,7 @@ for i=1:length(stimuli)
     
     v = VideoReader(strcat(input_path, stimuli(i), '_new.avi') );
     n_frames = v.Duration*v.FrameRate;
-    fprintf("Video of subject: %d, stimuli: %s, has %f frames \n",i,stimuli(i), v.Duration*v.FrameRate)
+    fprintf("Video of stimuli: %s, has %f frames \n",stimuli(i), v.Duration*v.FrameRate)
     frame_index =  1;
     end_ = 0;
 
