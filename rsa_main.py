@@ -129,27 +129,6 @@ rdm_statistics_df = pd.DataFrame(rdm_statistics_list,
 
 rdm_statistics_df = rdm_statistics_df.sort_values(by="Time window")
 
-#pos_corr_rdms =  rdm_statistics_df[rdm_statistics_df["Kendall tau"]>0]
-
-#n_test = 1
-#if correct:
-#    n_test = 400
-#    significant_rdms = pos_corr_rdms[pos_corr_rdms["Kendall p-value"]/2 <= (alpha/n_test)]
-#    print(significant_rdms.sort_values(by="Kendall tau", ascending=False))
-
-    # Calculate noise ceiling
-    #upper_ceiling_list = []
-    #lower_ceiling_list = []
-    #for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
-    #    lower_ceiling, upper_ceiling = rsa.calculate_noise_ceiling(EEG_RDM_list)
-    #    lower_ceiling_list.append(lower_ceiling)
-    #    upper_ceiling_list.append(upper_ceiling)
-
-
-    # Time winodws are sorted alphabetically in hdf5
-    # Sort by time windows to sort numerically
-
-
 # Saving the dataframe:
 with open(args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric +'_results.pkl', 'wb') as f:
     pickle.dump([rdm_statistics_df, args.eeg_rdm_dist_metric, args.model_rdm_dist_metric], f)
