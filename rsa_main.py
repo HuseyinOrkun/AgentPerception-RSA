@@ -1,19 +1,18 @@
 # Uses functions in other files to do the experiment
+import matplotlib as mpl
+
+mpl.use('Agg')
 from collections import defaultdict
 import rsa_io
 import rsa
-import rsa_visualization as vis
 import argparse
 import os
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib as mpl
 import pickle
 
-mpl.use('Agg')
-
 parser = argparse.ArgumentParser()
+
 parser.add_argument('eeg_root_path', type=str,
                     help='directory of eeg data')
 parser.add_argument('model_root_path', type=str,
@@ -24,9 +23,8 @@ parser.add_argument('save_path', metavar='output path', type=str,
                     help='Path to save the results of the experiment')
 parser.add_argument("eeg_rdm_dist_metric",type=str,help="Distance metric to use to create eeg rdms")
 parser.add_argument("model_rdm_dist_metric",type=str,help="Distance metric to use to create model rdms")
-parser.add_argument("stimuli_type", type=str, help= "Type of the stimuli, either still or video")
 parser.add_argument("experiment_type", type=str, help= "Type of the experiment, either prior or naive")
-
+parser.add_argument("stimuli_type", type=str, help="Type of the stimuli, either still or video")
 args = parser.parse_args()
 
 # Apply Bonferroni correction?
@@ -37,11 +35,6 @@ alpha = 0.001
 subject_folders = [name for name in os.listdir(args.eeg_root_path) if
                    os.path.isdir(args.eeg_root_path + name) and name.startswith("subj")]
 n_subjects = len(subject_folders)
-
-
-#pd.set_option('display.max_columns', None)
-#pd.set_option('display.max_rows',None)
-#pd.set_option('display.width', None)
 
 # Create modelRDMs folder in models if not exists
 model_RDM_path = args.save_path + "modelRDMs/"
@@ -80,7 +73,8 @@ rdm_statistics_list = []
 electrode_regions = ['central', 'frontal', 'parietal', 'temporal', 'whole_brain','occipital']
 for electrode_region in electrode_regions:
 
-    # Check if eeg_rdm exists in eeg_rdm_path, meaning that experiment is already done with this w_size and eeg_rdm_distance
+    # Check if eeg_rdm exists in eeg_rdm_path,
+    # meaning that experiment is already done with this w_size and eeg_rdm_distance
     windowed_eeg_rdm_dict = None
 
     # create the name of eeg rdm file
@@ -88,9 +82,12 @@ for electrode_region in electrode_regions:
                     str(args.w_size) + "_" + args.eeg_rdm_dist_metric
 
     if eeg_rdm_fname + ".hdf5" in os.listdir(eeg_rdm_path):
-        print("EEG RDMs with parameters with window size: {0} and distance: {1} is already created for electrode location "
-              "{2} in experiment {3},{4}, loading from {5}".format(str(args.w_size), args.eeg_rdm_dist_metric, electrode_region, args.experiment_type, args.stimuli_type
-                                                                   ,eeg_rdm_path + eeg_rdm_fname))
+        print("EEG RDMs with parameters with window size: {0} and distance: "
+              "{1} is already created for electrode location "
+              "{2} in experiment {3},{4}, loading from {5}"
+              .format(str(args.w_size), args.eeg_rdm_dist_metric, electrode_region,
+                      args.experiment_type, args.stimuli_type, eeg_rdm_path + eeg_rdm_fname))
+
         windowed_eeg_rdm_dict, attributes = rsa_io.load_from_hdf5(eeg_rdm_fname, eeg_rdm_path)
     else:
         windowed_eeg_rdm_dict = defaultdict(list)
@@ -115,20 +112,24 @@ for electrode_region in electrode_regions:
             windowed_eeg_rdm_dict[window] = np.vstack(eeg_rdm_list)
 
         # Save eeg rdms to hdf5 file
-        rsa_io.save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, args.w_size, eeg_rdm_fname, eeg_rdm_path)
+        rsa_io.save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, args.w_size,
+                            eeg_rdm_fname, eeg_rdm_path)
 
     for model_name, model_RDM in model_RDM_dict.items():
         for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
-            kendall_tau, kendall_p_value = rsa.correlate_models(model_RDM, np.mean(EEG_RDM_list, axis=0))
-            rdm_statistics_list.append([args.experiment_type, args.stimuli_type, electrode_region,
-                                        model_name, time_window, kendall_tau, kendall_p_value])
+            for i, EEG_RDM in enumerate(EEG_RDM_list):
+                kendall_tau, kendall_p_value = rsa.correlate_models(model_RDM, EEG_RDM)
+                rdm_statistics_list.append([args.experiment_type, args.stimuli_type, i, electrode_region,
+                                            model_name, 2 * (time_window[0] - 100), kendall_tau, kendall_p_value])
 
 rdm_statistics_df = pd.DataFrame(rdm_statistics_list,
-                                 columns=['Experiment Type', 'Stimuli Type', 'Electrode Region',
-                                          'Model name', 'Time window', 'Kendall tau', 'Kendall p-value'])
+                                 columns=['Experiment Type', 'Stimuli Type', 'Subject No', 'Electrode Region',
+                                          'Model name', 'Time(ms)', 'Kendall tau', 'Kendall p-value'])
 
 rdm_statistics_df = rdm_statistics_df.sort_values(by="Time window")
 
 # Saving the dataframe:
-with open(args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric +'_results.pkl', 'wb') as f:
+with open(
+        args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric + '_seperated_subjects_results.pkl',
+        'wb') as f:
     pickle.dump([rdm_statistics_df, args.eeg_rdm_dist_metric, args.model_rdm_dist_metric], f)

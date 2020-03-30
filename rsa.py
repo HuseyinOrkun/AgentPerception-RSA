@@ -1,14 +1,12 @@
-from scipy.spatial.distance import pdist, squareform
-from scipy import io, stats
+import matplotlib as mpl
+
+mpl.use('Agg')
+from scipy.spatial.distance import pdist
+from scipy import io
 import numpy as np
 from scipy import stats
-from sklearn.discriminant_analysis import _cov
 from sklearn.model_selection import LeaveOneOut
 from scipy.stats import rankdata
-from itertools import combinations
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-mpl.use('Agg')
 
 
 # Input: X ndarray, (n_condition, n_trial, n_channel)
@@ -26,8 +24,8 @@ def create_rdm(X, metric, name, model=False, save_path=None):
         # The metric dist(u=X[i], v=X[j]) is computed and stored in entry ij of RDM
         vector_RDM = pdist(X, metric)
 
-    elif metric == "cv_mahalanobis":
-        vector_RDM = cv_mahalanobis(X)
+    # elif metric == "cv_mahalanobis":
+    #    vector_RDM = cv_mahalanobis(X)
     else:
         # RDM = np.full((X.shape[0], X.shape[0]), fill_value=np.nan)
         raise NotImplementedError
@@ -43,6 +41,7 @@ def vectorize(RDM):
     return vector_RDM
 
 
+"""
 def cv_mahalanobis(X, cv_scheme=LeaveOneOut()):
     # TODO: check if true
 
@@ -92,7 +91,7 @@ def cv_mahalanobis(X, cv_scheme=LeaveOneOut()):
     RDM = np.mean(RDM_list, axis=0)
 
     return vectorize(RDM)
-
+"""
 
 # Should we really concat upper and lower triangles
 # the correlation doubles
