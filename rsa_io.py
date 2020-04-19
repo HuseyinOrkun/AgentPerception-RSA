@@ -1,9 +1,10 @@
 import os
-import scipy.io as sio
+from collections import defaultdict
+
+import h5py
 import numpy as np
 import pandas as pd
-import h5py
-from collections import defaultdict
+import scipy.io as sio
 
 
 # Input: EEG_root_path is the root path to the folder which has all the subjects folders.
@@ -11,17 +12,16 @@ from collections import defaultdict
 # Output: time_window_representations: Keys are time windows, Each value in the time_window_representations
 # is a list of 3D ndarrays with size (n_conditions, n_trials, n_channels)
 
-def build_eeg_data(subject_action_mats_path, time_window_size, subj_name):
-
+def build_eeg_data(subject_action_mats_path, time_window_size, subj_name, experiment_type, stimuli_type):
     agent_action_list = [
-        "robot-drink","robot-grasp","robot-handwave","robot-talk","robot-nudge",
-        "robot-paper","robot-turn","robot-wipe","android-drink","android-grasp","android-handwave",
-        "android-talk","android-nudge","android-paper","android-turn","android-wipe","human-drink",
-        "human-grasp","human-handwave","human-talk","human-nudge","human-paper","human-turn","human-wipe"]
+        "robot-drink", "robot-grasp", "robot-handwave", "robot-talk", "robot-nudge",
+        "robot-paper", "robot-turn", "robot-wipe", "android-drink", "android-grasp", "android-handwave",
+        "android-talk", "android-nudge", "android-paper", "android-turn", "android-wipe", "human-drink",
+        "human-grasp", "human-handwave", "human-talk", "human-nudge", "human-paper", "human-turn", "human-wipe"]
 
     # get all the .mat files
     condition_file_paths = [subject_action_mats_path + subj_name + "_" + agent_action
-                                 for agent_action in agent_action_list]
+                            for agent_action in agent_action_list]
 
     time_window_representations = defaultdict(list)
     max_n_trials = 0
@@ -29,16 +29,21 @@ def build_eeg_data(subject_action_mats_path, time_window_size, subj_name):
 
     # condition action file is the mat file of a condition of a subject and condition_file_paths is a list of condition
     # eeg mats of all conditions of a particular subject
-    for condition_file_path in condition_file_paths:
+    for i, condition_file_path in enumerate(condition_file_paths):
         loaded_file = sio.loadmat(condition_file_path)
 
         # subj_agent_action is a subject's eeg data for an action agent combination
         subj_agent_action = np.asarray(loaded_file["eeg_data"])
-        input_type = loaded_file["input_type"]
-        experiment_type = loaded_file["experiment_type"]
-        action = loaded_file["action"]
-        agent = loaded_file["agent"]
-        print("Input Type: {0}, Experiment type: {1}, Action Type: {2}, Agent Type: {3}".format(input_type, experiment_type, agent, action))
+        loaded_stimmuli_type = loaded_file["input_type"][0]
+        loaded_experiment_type = loaded_file["experiment_type"][0]
+        action = loaded_file["action"][0]
+        agent = loaded_file["agent"][0]
+        print("Input Type: {0}, Experiment type: {1}, Action Type: {2}, Agent Type: {3}".format(loaded_stimmuli_type,
+                                                                                                loaded_experiment_type,
+                                                                                                agent, action))
+        if (loaded_experiment_type.lower() != experiment_type.lower()
+                or loaded_stimmuli_type.lower() != stimuli_type.lower()):
+            raise Exception("Experiment type or stimuli type of loaded file does not match arguments given to python")
 
         # Check if total number of timepoints is divisable by time_window_size
         n_timepts = subj_agent_action.shape[1]
@@ -49,24 +54,20 @@ def build_eeg_data(subject_action_mats_path, time_window_size, subj_name):
         if n_timepts % time_window_size != 0:
             raise ValueError('Total number of timepoints is not divisable by given time_window_size')
 
+
         for start in range(0, n_timepts, time_window_size):
             end = start + time_window_size
-            key = (start, end)
-            
-            # Each value in the time_window_representations is a list of 3D ndarrays
-            # with length n_conditions each element is (n_trials, n_channels).
-            time_window_representations[key].append(np.average(subj_agent_action[:, start:end, :], axis=1).transpose())
+            # Each value in the time_window_representations is a list of vector of channels (specifying averaged trial
+            # eeg responses for a condition) with length n_conditions each element
+            # is (n_channels) which is te eeg data of a condition  in a time window given by the key.
+            time_window_representations[(start, end)].append(
+                np.mean(np.mean(subj_agent_action[:, start:end, :], axis=1), axis=1))
 
     # Since n_trials are not same for each condition, the missing values are filled
     # with NaN in the code below. Also, now each value in time_window_representations is a 3D array 
-    # with shape (n_conditions, max_n_trials, n_channels)
+    # with shape (n_conditions, n_channels)
     for time_window, condition_eeg_data_list in time_window_representations.items():
-        b = np.full((n_conditions, max_n_trials, n_channels), np.nan)
-        for condition_no, trial_eeg_data in enumerate(condition_eeg_data_list):
-            n_trials = trial_eeg_data.shape[0]
-            n_channels = trial_eeg_data.shape[1]
-            b[condition_no, :n_trials, :n_channels] = trial_eeg_data
-        time_window_representations[time_window] = b
+        time_window_representations[time_window] = np.asarray(condition_eeg_data_list)
     return time_window_representations
 
 
@@ -96,7 +97,7 @@ def save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, distance_metric, w_siz
         f.attrs["w_size"] = w_size
         f.attrs["distance_metric"] = distance_metric
         for time_window, eeg_rdm_np in windowed_eeg_rdm_dict.items():
-            tm_grp=f.create_group(str(time_window))
+            tm_grp = f.create_group(str(time_window))
             tm_grp.create_dataset("rdm", data=eeg_rdm_np)
 
 
@@ -107,8 +108,9 @@ def load_from_hdf5(name, path):
         attributes = list(f.attrs.items())
         print("Dataset attributes of " + name, attributes)
         for key in list(f.keys()):
-              windowed_eeg_rdm_dict[tuple(map(int, key[1:-1].split(',')))] = np.asarray(f[key]["rdm"])
+            windowed_eeg_rdm_dict[tuple(map(int, key[1:-1].split(',')))] = np.asarray(f[key]["rdm"])
         return windowed_eeg_rdm_dict, attributes
+
 
 if __name__ == '__main__':
     test_dict = build_eeg_data('/Users/huseyinelmas/Desktop/data/still/')

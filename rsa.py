@@ -12,12 +12,8 @@ from scipy.stats import rankdata
 # Input: X ndarray, (n_condition, n_trial, n_channel)
 # metric: distance metric
 # model: if the given input is from a model or eeg with trials,
-def create_rdm(X, metric, name, model=False, save_path=None):
+def create_rdm(X, metric, name, save_path=None):
     if "cv" not in metric:
-        if not model:
-            # average on the trial axis ignoring nan values, then calculate distance
-            X = np.nanmean(X, axis=1)
-
         # Calculate distance between eah row of X
         # Condensed distance matrix RDM. For each i and j (where i < j < m),
         # where m is the number of original observations.

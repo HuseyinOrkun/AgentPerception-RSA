@@ -1,6 +1,5 @@
 # Uses functions in other files to do the experiment
 import matplotlib as mpl
-
 mpl.use('Agg')
 from collections import defaultdict
 import rsa_io
@@ -14,17 +13,19 @@ import pickle
 parser = argparse.ArgumentParser()
 
 parser.add_argument('eeg_root_path', type=str,
-                    help='directory of eeg data')
+                    help='directory of eeg data, to the directory that contains subject folders')
 parser.add_argument('model_root_path', type=str,
-                    help='directory of models')
+                    help='directory of models, path of directory that contains models')
 parser.add_argument('w_size', metavar='window size', type=int,
-                    help='The window size')
+                    help='The window size in ms e.g 1, 5')
 parser.add_argument('save_path', metavar='output path', type=str,
                     help='Path to save the results of the experiment')
 parser.add_argument("eeg_rdm_dist_metric",type=str,help="Distance metric to use to create eeg rdms")
 parser.add_argument("model_rdm_dist_metric",type=str,help="Distance metric to use to create model rdms")
-parser.add_argument("experiment_type", type=str, help= "Type of the experiment, either prior or naive")
-parser.add_argument("stimuli_type", type=str, help="Type of the stimuli, either still or video")
+parser.add_argument("experiment_type", type=str, choices=["naive", "prior"],
+                    help="Type of the experiment, either prior or naive")
+parser.add_argument("stimuli_type", type=str, choices=["video", "still"],
+                    help="Type of the stimuli, either still or video")
 args = parser.parse_args()
 
 # Apply Bonferroni correction?
@@ -34,6 +35,7 @@ correct = True
 alpha = 0.001
 subject_folders = [name for name in os.listdir(args.eeg_root_path) if
                    os.path.isdir(args.eeg_root_path + name) and name.startswith("subj")]
+subject_folders.sort()
 n_subjects = len(subject_folders)
 
 # Create modelRDMs folder in models if not exists
@@ -62,7 +64,7 @@ for model_file in os.listdir(args.model_root_path):
         if not model_name + '.npy' in os.listdir(model_RDM_path):
             model = rsa_io.load_model(file_path=args.model_root_path + model_file)
             model_RDM_dict[model_name] = rsa.create_rdm(model, metric=metric, name=model_name,
-                                                        save_path=model_RDM_path, model=True)
+                                                        save_path=model_RDM_path)
         else:
             print("Model RDM for {0} with distance metric: {1} was found in {2},"
                   " loading already created Model RDM ".format(model_name, args.model_rdm_dist_metric, model_RDM_path))
@@ -70,13 +72,12 @@ for model_file in os.listdir(args.model_root_path):
 
 # Compare model and eeg rdms append to a list
 rdm_statistics_list = []
-electrode_regions = ['central', 'frontal', 'parietal', 'temporal', 'whole_brain','occipital']
+electrode_regions = ['central', 'frontal', 'parietal', 'temporal', 'whole_brain', 'occipital']
 for electrode_region in electrode_regions:
 
+    windowed_eeg_rdm_dict = None
     # Check if eeg_rdm exists in eeg_rdm_path,
     # meaning that experiment is already done with this w_size and eeg_rdm_distance
-    windowed_eeg_rdm_dict = None
-
     # create the name of eeg rdm file
     eeg_rdm_fname = "eeg_rdm_" + args.experiment_type + "_" + args.stimuli_type + "_" + electrode_region + "_" +\
                     str(args.w_size) + "_" + args.eeg_rdm_dist_metric
@@ -98,9 +99,9 @@ for electrode_region in electrode_regions:
             subj_path = args.eeg_root_path + subject_folder + "/" + electrode_region + "/action-mats/"
 
             # Keys are time windows, Each value in the time_window_representations is a 3D ndarray
-            # with size (n_conditions, n_trials, n_channels). Since n_trials are not same for each condition,
-            # the missing values are filled with NaN.
-            time_window_representations = rsa_io.build_eeg_data(subj_path, args.w_size, subj_name)
+            # with size (n_conditions, n_channels).
+            time_window_representations = rsa_io.build_eeg_data(subj_path, args.w_size, subj_name,
+                                                                args.experiment_type, args.stimuli_type)
 
             # traverse each window in time_window_representations and calculate rdm
             for window, eeg_data in time_window_representations.items():
@@ -123,12 +124,10 @@ for electrode_region in electrode_regions:
                                             model_name, 2 * (time_window[0] - 100), kendall_tau, kendall_p_value])
 
 rdm_statistics_df = pd.DataFrame(rdm_statistics_list,
-                                 columns=['Experiment Type', 'Stimuli Type', 'Subject No', 'Electrode Region',
-                                          'Model name', 'Time(ms)', 'Kendall tau', 'Kendall p-value'])
+                                 columns=['experiment_type', 'stimulus_type', 'subject_no', 'electrode_region',
+                                          'model_name', 'time', 'kendall_tau', 'kendall_p-value'])
+rdm_statistics_df = rdm_statistics_df.sort_values(by="time")
 
-rdm_statistics_df = rdm_statistics_df.sort_values(by="Time window")
-
-# Saving the dataframe:
 with open(
         args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric + '_seperated_subjects_results.pkl',
         'wb') as f:
