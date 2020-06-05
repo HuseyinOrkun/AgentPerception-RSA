@@ -89,7 +89,8 @@ for electrode_region in electrode_regions:
               .format(str(args.w_size), args.eeg_rdm_dist_metric, electrode_region,
                       args.experiment_type, args.stimuli_type, eeg_rdm_path + eeg_rdm_fname))
 
-        windowed_eeg_rdm_dict, attributes = rsa_io.load_from_hdf5(eeg_rdm_fname, eeg_rdm_path)
+        windowed_eeg_rdm_dict, attributes = rsa_io.load_from_hdf5(eeg_rdm_fname, eeg_rdm_path
+                                                                  ,args.experiment_type,args.stimuli_type)
     else:
         windowed_eeg_rdm_dict = defaultdict(list)
 
@@ -114,7 +115,7 @@ for electrode_region in electrode_regions:
 
         # Save eeg rdms to hdf5 file
         rsa_io.save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, args.w_size,
-                            eeg_rdm_fname, eeg_rdm_path)
+                            eeg_rdm_fname, eeg_rdm_path,args.experiment_type,args.stimuli_type)
 
     for model_name, model_RDM in model_RDM_dict.items():
         for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():

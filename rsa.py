@@ -1,6 +1,6 @@
 import matplotlib as mpl
 
-mpl.use('Agg')
+#mpl.use('Agg')
 from scipy.spatial.distance import pdist
 from scipy import io
 import numpy as np
