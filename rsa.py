@@ -1,12 +1,10 @@
-import matplotlib as mpl
-
 #mpl.use('Agg')
-from scipy.spatial.distance import pdist
-from scipy import io
 import numpy as np
+from scipy import io
 from scipy import stats
-from sklearn.model_selection import LeaveOneOut
+from scipy.spatial.distance import pdist
 from scipy.stats import rankdata
+from sklearn.model_selection import LeaveOneOut
 
 
 # Input: X ndarray, (n_condition, n_trial, n_channel)
@@ -14,6 +12,7 @@ from scipy.stats import rankdata
 # model: if the given input is from a model or eeg with trials,
 def create_rdm(X, metric, name, save_path=None):
     if "cv" not in metric:
+
         # Calculate distance between eah row of X
         # Condensed distance matrix RDM. For each i and j (where i < j < m),
         # where m is the number of original observations.
@@ -23,7 +22,6 @@ def create_rdm(X, metric, name, save_path=None):
     # elif metric == "cv_mahalanobis":
     #    vector_RDM = cv_mahalanobis(X)
     else:
-        # RDM = np.full((X.shape[0], X.shape[0]), fill_value=np.nan)
         raise NotImplementedError
     if save_path is not None:
         np.save(save_path + name, vector_RDM)
