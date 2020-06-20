@@ -24,8 +24,8 @@ parser.add_argument("eeg_rdm_dist_metric",type=str,help="Distance metric to use 
 parser.add_argument("model_rdm_dist_metric",type=str,help="Distance metric to use to create model rdms")
 parser.add_argument("experiment_type", type=str, choices=["naive", "prior"],
                     help="Type of the experiment, either prior or naive")
-parser.add_argument("stimuli_type", type=str, choices=["video", "still"],
-                    help="Type of the stimuli, either still or video")
+parser.add_argument("stimuli_type", type=str, choices=["video", "still-mf", "still-ff"],
+                    help="Type of the stimuli, either still-mf, still-ff or video")
 args = parser.parse_args()
 
 # Apply Bonferroni correction?
@@ -54,7 +54,7 @@ model_RDM_dict = {}
 for model_file in os.listdir(args.model_root_path):
 
     # Don't include flow model and video gabor model for still input types
-    if args.stimuli_type == "still" and "flow" in model_file or args.stimuli_type == "still" and "video" in model_file:
+    if "still"  in args.stimuli_type and "flow" in model_file or "still" in args.stimuli_type and "video" in model_file:
         continue
     if not model_file.startswith("."):
         metric = args.model_rdm_dist_metric if 'gabor' not in model_file and 'optic' not in model_file \
