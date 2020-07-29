@@ -6,8 +6,9 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # Input: windowed_eeg_rdm_dict, model_rdm_dict: dictionary (nmodels keys, ndarray (276) values)
 # Output: VIF dataframe and result dataframe. VIF dataframe contains VIF values for each regressor
-# result dataframe is a dataframe containing in each row experiment_type, stimuli_type, electrode_region model,
+# result_list is a list containing in each row experiment_type, stimuli_type, electrode_region model,
 # time_windowbeta_coef, tvalue, pvalue, lower_conf_interval, upper_conf_interval for each paramter estimate
+# Will be turned to dataframe in rsa_main.py
 def regression(windowed_eeg_rdm_dict, model_rdm_dict, experiment_type, stimuli_type, electrode_region):
     # get the rdms as a list and get their names
     model_rdms = list(model_rdm_dict.values())
