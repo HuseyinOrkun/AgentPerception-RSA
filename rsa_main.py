@@ -1,5 +1,6 @@
 # Uses functions in other files to do the experiment
 import matplotlib as mpl
+
 mpl.use('Agg')
 from collections import defaultdict
 import rsa_io
@@ -9,6 +10,7 @@ import os
 import pandas as pd
 import numpy as np
 import pickle
+import regression
 
 parser = argparse.ArgumentParser()
 
@@ -26,7 +28,7 @@ parser.add_argument("eeg_rdm_dist_metric", type=str, help="Distance metric to us
 parser.add_argument("model_rdm_dist_metric", type=str, help="Distance metric to use to create model rdms")
 parser.add_argument("experiment_type", type=str, choices=["naive", "prior"],
                     help="Type of the experiment, either prior or naive")
-parser.add_argument("stimulus_type", type=str, choices=["video", "still-ff","still-mf"],
+parser.add_argument("stimulus_type", type=str, choices=["video", "still-ff", "still-mf"],
                     help="Type of the stimuli, either still-mf, still-ff or video")
 parser.add_argument('--avg_subjects_rdm', dest='use_avg_rdms', action='store_true',
                     help="calculates statistics based on subject wise averaged rdms")
@@ -66,7 +68,7 @@ for model_file in os.listdir(args.model_root_path):
     if not model_file.startswith("."):
 
         # Don't include flow model and video gabor model for still input types
-        if "still"  in args.stimulus_type  and ("flow" in model_file or "gabor" in model_file):
+        if "still" in args.stimulus_type and ("flow" in model_file or "gabor" in model_file):
             continue
 
         # Choose rdm metric as correlation for gabor or flow models else use hamming
@@ -88,6 +90,16 @@ for model_file in os.listdir(args.model_root_path):
 # Compare model and eeg rdms and save statistics to a list
 rdm_statistics_list = []
 
+# Regression results list
+
+# get the rdms as a list and get their names
+model_rdms = list(model_RDM_dict.values())
+models = list(model_RDM_dict.keys())
+
+# Make the list of model rdms into one model regressor matrix (nmodelsx276)
+regressor_matrix = np.column_stack(model_rdms)
+
+regression_results_list = []
 # List the electrode regions used
 electrode_regions = ['central', 'frontal', 'parietal', 'temporal', 'whole_brain', 'occipital']
 for electrode_region in electrode_regions:
@@ -139,6 +151,17 @@ for electrode_region in electrode_regions:
         rsa_io.save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, n_subjects
                             , args.w_size, eeg_rdm_fname, eeg_rdm_path, args.experiment_type, args.stimulus_type)
 
+    # Regression TODO: Can put this function into the loop below but that could confuse the code
+    #  also would give seperated use opportunity with the parameter
+
+    vif, rr = regression.regression(windowed_eeg_rdm_dict, model_RDM_dict, args.experiment_type,
+                                    args.stimulus_type, electrode_region)
+    regression_results_list.extend(rr)
+
+    # Save VIF results as csv
+    vif.to_csv(args.save_path + electrode_region + "_VIF_Results.csv")
+
+    # Kendall tau
     for model_name, model_RDM in model_RDM_dict.items():
         for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():
 
@@ -155,7 +178,18 @@ for electrode_region in electrode_regions:
                     rdm_statistics_list.append([args.experiment_type, args.stimulus_type, i, electrode_region,
                                                 model_name, time_window[0], kendall_tau, kendall_p_value])
 
+# Column names for the resulting df
+rr_columns = ['experiment_type', 'stimuli_type', 'electrode_region', 'model', 'time_window', 'beta_value',
+              't_value', 'p_value', 'lower_conf_interval', 'upper_conf_interval']
+
+# Convert regression results list to df with column names
+regression_results_df = pd.DataFrame(regression_results_list, columns=rr_columns)
+
+# Sort by time values to have a better ordering based on time window
+regression_results_df = regression_results_df.sort_values(by="time_window")
+
 if args.use_avg_rdms:
+
     rdm_statistics_df = pd.DataFrame(rdm_statistics_list, columns=['experiment_type', 'stimulus_type',
                                                                    'electrode_region', 'model_name', 'time',
                                                                    'kendall_tau', 'kendall_p-value'])
@@ -172,5 +206,9 @@ else:
 rdm_statistics_df = rdm_statistics_df.sort_values(by="time")
 
 # Save as pickle
+with open(args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric + "regression_results.pkl",
+          'wb') as f:
+    pickle.dump([regression_results_df, args.eeg_rdm_dist_metric, args.model_rdm_dist_metric], f)
+
 with open(args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric + pkl_name, 'wb') as f:
     pickle.dump([rdm_statistics_df, args.eeg_rdm_dist_metric, args.model_rdm_dist_metric], f)
