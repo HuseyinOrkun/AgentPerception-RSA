@@ -136,8 +136,8 @@ for electrode_region in electrode_regions:
             windowed_eeg_rdm_dict[window] = np.vstack(eeg_rdm_list)
 
         # Save eeg rdms to hdf5 file
-        rsa_io.save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, args.w_size,
-                            eeg_rdm_fname, eeg_rdm_path, args.experiment_type, args.stimulus_type)
+        rsa_io.save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, n_subjects
+                            , args.w_size, eeg_rdm_fname, eeg_rdm_path, args.experiment_type, args.stimulus_type)
 
     for model_name, model_RDM in model_RDM_dict.items():
         for time_window, EEG_RDM_list in windowed_eeg_rdm_dict.items():

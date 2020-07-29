@@ -32,9 +32,10 @@ for i=1:length(stimuli)
         flow = estimateFlow(opticFlow,bw_frame);
         
         % Appending all variables of flow into a vector, will only consider
-        %magnitude and orientation now
+%magnitude
         % vect_flow = reshape(cat(dim,flow.Vx,flow.Vy,flow.Orientation,flow.Magnitude),1,[]);
-        flow_temp(:,:,mod(frame_index-1, N/M)+1) = cat(2, flow.Magnitude, flow.Orientation);
+% Changed here to only magnitude
+flow_temp( : , : , mod(frame_index - 1, N / M)+ 1) = flow.Magnitude;
         if((mod(frame_index, N/M) == 0) ||  (n_frames == 59 && frame_index == 59))
             flow_column_vectorized = reshape(mean(flow_temp, 3), 1, []);
             start = end_+1;
