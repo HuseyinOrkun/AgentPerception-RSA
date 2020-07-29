@@ -206,7 +206,7 @@ else:
 rdm_statistics_df = rdm_statistics_df.sort_values(by="time")
 
 # Save as pickle
-with open(args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric + "regression_results.pkl",
+with open(args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric + "_regression_results.pkl",
           'wb') as f:
     pickle.dump([regression_results_df, args.eeg_rdm_dist_metric, args.model_rdm_dist_metric], f)
 
