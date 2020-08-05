@@ -179,7 +179,7 @@ for electrode_region in electrode_regions:
                                                 model_name, time_window[0], kendall_tau, kendall_p_value])
 
 # Column names for the resulting df
-rr_columns = ['experiment_type', 'stimuli_type', 'electrode_region', 'model', 'time_window', 'beta_value',
+rr_columns = ['experiment_type', 'stimuli_type', 'electrode_region', 'model_name', 'time', 'beta_value',
               't_value', 'p_value', 'lower_conf_interval', 'upper_conf_interval']
 
 # Convert regression results list to df with column names

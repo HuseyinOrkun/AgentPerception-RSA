@@ -25,16 +25,12 @@ def regression(windowed_eeg_rdm_dict, model_rdm_dict, experiment_type, stimuli_t
     # Regression results as a list, will be converted to df
     regression_results_list = []
 
-    # Column names for the resulting df
-    column_names = ['experiment_type', 'stimuli_type', 'electrode_region', 'model', 'time_window', 'beta_value',
-                    't_value', 'p_value', 'lower_conf_interval', 'upper_conf_interval']
-
     # For each time window and, get the mean rdm across subjects, use OLS and get each beta coefficient and
     # statistic values
     for time_wind, eeg_rdm in windowed_eeg_rdm_dict.items():
         results = OLS(np.mean(eeg_rdm, 0), regressor_matrix).fit()
         for i, model in enumerate(models):
-            temp = [experiment_type, stimuli_type, electrode_region, model, time_wind]
+            temp = [experiment_type, stimuli_type, electrode_region, model, time_wind[0]]
             temp.extend([results.params[i], results.tvalues[i], results.pvalues[i]])
             temp.extend(results.conf_int().tolist()[i])
             regression_results_list.append(temp)
