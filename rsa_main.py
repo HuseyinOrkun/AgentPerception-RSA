@@ -186,7 +186,7 @@ rr_columns = ['experiment_type', 'stimuli_type', 'electrode_region', 'model_name
 regression_results_df = pd.DataFrame(regression_results_list, columns=rr_columns)
 
 # Sort by time values to have a better ordering based on time window
-regression_results_df = regression_results_df.sort_values(by="time_window")
+regression_results_df = regression_results_df.sort_values(by="time")
 
 if args.use_avg_rdms:
 
