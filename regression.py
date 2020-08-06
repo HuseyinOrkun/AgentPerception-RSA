@@ -18,6 +18,10 @@ def regression(windowed_eeg_rdm_dict, model_rdm_dict, experiment_type, stimuli_t
 
     # Make the list of model rdms into one model regressor matrix (nmodelsx276)
     regressor_matrix = np.column_stack(model_rdms)
+
+    # Adding constant
+    regressor_matrix = sm.add_constant(regressor_matrix)
+
     # Regression results as a list, will be converted to df
     regression_results_list = []
 
@@ -36,7 +40,7 @@ def regression(windowed_eeg_rdm_dict, model_rdm_dict, experiment_type, stimuli_t
 
 def vif_analysis(model_rdm_dict, save_path, thresh=5):
     model_rdms = list(model_rdm_dict.values())
-    models = ["constant"] + list(model_rdm_dict.keys())
+    models = list(model_rdm_dict.keys())
     regressor_matrix = np.column_stack(model_rdms)
 
     # VIF calculation
@@ -45,8 +49,13 @@ def vif_analysis(model_rdm_dict, save_path, thresh=5):
         dropped = False
         # Make the list of model rdms into one model regressor matrix (nmodelsx276)
         vif = pd.DataFrame()
+
+        # Adding constant
         regressor_matrix = sm.add_constant(regressor_matrix)
-        vif["VIF Factor"] = [variance_inflation_factor(regressor_matrix, i) for i in range(regressor_matrix.shape[1])]
+
+        # 1 to regressor matrix to ignore constant term
+        vif["VIF Factor"] = [variance_inflation_factor(regressor_matrix, i) for i in
+                             range(1, regressor_matrix.shape[1])]
         vif["model_name"] = models
 
         maxloc = vif['VIF Factor'].idxmax()
@@ -55,8 +64,7 @@ def vif_analysis(model_rdm_dict, save_path, thresh=5):
                   '\' at index: ' + str(maxloc))
             print(vif)
             models.remove(vif.loc[maxloc].model_name)
-            regressor_matrix = np.delete(regressor_matrix, maxloc, 1)
-
+            regressor_matrix = np.delete(regressor_matrix, maxloc + 1, 1)
             dropped = True
     print('Remaining variables:')
     print(models)
