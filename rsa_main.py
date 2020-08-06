@@ -90,11 +90,12 @@ for model_file in os.listdir(args.model_root_path):
 # Compare model and eeg rdms and save statistics to a list
 rdm_statistics_list = []
 
-# Regression results list
+# VIF Analysis, reeturns the models afrer regression analysis
+remaning_models = regression.vif_analysis(model_RDM_dict, args.save_path)
 
 # get the rdms as a list and get their names
-model_rdms = list(model_RDM_dict.values())
-models = list(model_RDM_dict.keys())
+model_rdms = [model_RDM_dict[model] for model in remaning_models]
+
 
 # Make the list of model rdms into one model regressor matrix (nmodelsx276)
 regressor_matrix = np.column_stack(model_rdms)
@@ -154,12 +155,10 @@ for electrode_region in electrode_regions:
     # Regression TODO: Can put this function into the loop below but that could confuse the code
     #  also would give seperated use opportunity with the parameter
 
-    vif, rr = regression.regression(windowed_eeg_rdm_dict, model_RDM_dict, args.experiment_type,
-                                    args.stimulus_type, electrode_region)
-    regression_results_list.extend(rr)
+    rr = regression.regression(windowed_eeg_rdm_dict, model_RDM_dict, args.experiment_type,
+                               args.stimulus_type, electrode_region)
 
-    # Save VIF results as csv
-    vif.to_csv(args.save_path + electrode_region + "_VIF_Results.csv")
+    regression_results_list.extend(rr)
 
     # Kendall tau
     for model_name, model_RDM in model_RDM_dict.items():
