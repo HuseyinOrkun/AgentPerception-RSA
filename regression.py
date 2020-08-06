@@ -14,7 +14,7 @@ def regression(windowed_eeg_rdm_dict, model_rdm_dict, experiment_type, stimuli_t
 
     # get the rdms as a list and get their names
     model_rdms = list(model_rdm_dict.values())
-    models = list(model_rdm_dict.keys())
+    models = ["constant"] + list(model_rdm_dict.keys())
 
     # Make the list of model rdms into one model regressor matrix (nmodelsx276)
     regressor_matrix = np.column_stack(model_rdms)
@@ -57,17 +57,17 @@ def vif_analysis(model_rdm_dict, save_path, thresh=5):
         vif["VIF Factor"] = [variance_inflation_factor(regressor_matrix, i) for i in
                              range(1, regressor_matrix.shape[1])]
         vif["model_name"] = models
+        print(vif)
 
         maxloc = vif['VIF Factor'].idxmax()
         if vif['VIF Factor'].max() > thresh:
             print('dropping \'' + vif.loc[maxloc].model_name +
                   '\' at index: ' + str(maxloc))
-            print(vif)
             models.remove(vif.loc[maxloc].model_name)
             regressor_matrix = np.delete(regressor_matrix, maxloc + 1, 1)
             dropped = True
     print('Remaining variables:')
     print(models)
-    vif.to_csv(save_path + "_VIF_Results.csv")
+    vif.to_csv(save_path + "VIF_Results.csv")
 
     return models
