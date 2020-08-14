@@ -68,7 +68,10 @@ for model_file in os.listdir(args.model_root_path):
     if not model_file.startswith("."):
 
         # Don't include flow model and video gabor model for still input types
-        if "still" in args.stimulus_type and ("flow" in model_file or "gabor" in model_file or "motion" in model_file):
+        if "still" in args.stimulus_type and ("flow" in model_file or "motion" in model_file)
+            or "video" in args.stimulus_type and ("ff" in model_file or "mf" in model_file)
+            or "still-mf" in args.stimulus_type and ("ff" in model_file)
+            or "still-ff" in args.stimulus_type and ("mf" in model_file):
             continue
 
         # Choose rdm metric as correlation for gabor or flow models else use hamming
