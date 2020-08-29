@@ -68,11 +68,11 @@ for model_file in os.listdir(args.model_root_path):
     if not model_file.startswith("."):
 
         # Don't include flow model and video gabor model for still input types
-
-        if ("still" in args.stimulus_type and ("video" in model_file or "flow" in model_file or "motion" in model_file or "avg" in model_file) 
-            or "video" in args.stimulus_type and ("ff" in model_file or "mf" in model_file) 
-            or "still-mf" in args.stimulus_type and ("ff" in model_file) 
-            or "still-ff" in args.stimulus_type and ("mf" in model_file)):
+        if ("still" in args.stimulus_type and (
+                "video" in model_file or "flow" in model_file or "motion" in model_file or "avg" in model_file)
+                or "video" in args.stimulus_type and ("ff" in model_file or "mf" in model_file)
+                or "still-mf" in args.stimulus_type and ("ff" in model_file)
+                or "still-ff" in args.stimulus_type and ("mf" in model_file)):
             continue
 
         # Choose rdm metric as correlation for gabor or flow models else use hamming
@@ -99,7 +99,6 @@ remaning_models = regression.vif_analysis(model_RDM_dict, args.save_path)
 
 # get the rdms as a list and get their names
 model_rdms = [model_RDM_dict[model] for model in remaning_models]
-
 
 # Make the list of model rdms into one model regressor matrix (nmodelsx276)
 regressor_matrix = np.column_stack(model_rdms)
