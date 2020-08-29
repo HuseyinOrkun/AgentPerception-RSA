@@ -68,15 +68,19 @@ for model_file in os.listdir(args.model_root_path):
     if not model_file.startswith("."):
 
         # Don't include flow model and video gabor model for still input types
-
-        if ("still" in args.stimulus_type and ("video" in model_file or "flow" in model_file or "motion" in model_file or "avg" in model_file) 
-            or "video" in args.stimulus_type and ("ff" in model_file or "mf" in model_file) 
-            or "still-mf" in args.stimulus_type and ("ff" in model_file) 
-            or "still-ff" in args.stimulus_type and ("mf" in model_file)):
+        if ("still" in args.stimulus_type and (
+                "video" in model_file or "flow" in model_file or "motion" in model_file or "avg" in model_file)
+                or "video" in args.stimulus_type and ("ff" in model_file or "mf" in model_file)
+                or "still-mf" in args.stimulus_type and ("ff" in model_file)
+                or "still-ff" in args.stimulus_type and ("mf" in model_file)):
             continue
 
         # Choose rdm metric as correlation for gabor or flow models else use hamming
-        model_rdm_dist_metric = 'correlation' if "gabor" in model_file or "flow" in model_file else args.model_rdm_dist_metric
+        model_rdm_dist_metric = 'correlation' if "gabor" in model_file or \
+                                                 "flow" in model_file or \
+                                                 "motion" in model_file or \
+                                                 "intensity" in model_file \
+            else args.model_rdm_dist_metric
 
         # Get the model name
         model_name = os.path.splitext(model_file)[0] + "_" + model_rdm_dist_metric
@@ -100,13 +104,13 @@ remaning_models = regression.vif_analysis(model_RDM_dict, args.save_path)
 # get the rdms as a list and get their names
 model_rdms = [model_RDM_dict[model] for model in remaning_models]
 
-
 # Make the list of model rdms into one model regressor matrix (nmodelsx276)
 regressor_matrix = np.column_stack(model_rdms)
 
 regression_results_list = []
 # List the electrode regions used
 electrode_regions = ['central', 'frontal', 'parietal', 'temporal', 'whole_brain', 'occipital']
+rsquared_adjusted = {}
 for electrode_region in electrode_regions:
 
     # Check if eeg_rdm exists in eeg_rdm_path, if experiment is already done with this w_size and
@@ -156,12 +160,12 @@ for electrode_region in electrode_regions:
         rsa_io.save_to_hdf5(electrode_region, windowed_eeg_rdm_dict, args.eeg_rdm_dist_metric, n_subjects
                             , args.w_size, eeg_rdm_fname, eeg_rdm_path, args.experiment_type, args.stimulus_type)
 
-    # Regression TODO: Can put this function into the loop below but that could confuse the code
-    #  also would give seperated use opportunity with the parameter
-
-    rr = regression.regression(windowed_eeg_rdm_dict, model_RDM_dict, args.experiment_type,
+    # Regression
+    rr, rsquares = regression.regression(windowed_eeg_rdm_dict, model_RDM_dict, args.experiment_type,
                                args.stimulus_type, electrode_region)
 
+    # Adjusetd rsquares
+    rsquared_adjusted[electrode_region] = rsquares
     regression_results_list.extend(rr)
 
     # Kendall tau
@@ -211,7 +215,7 @@ rdm_statistics_df = rdm_statistics_df.sort_values(by="time")
 # Save as pickle
 with open(args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric + "_regression_results.pkl",
           'wb') as f:
-    pickle.dump([regression_results_df, args.eeg_rdm_dist_metric, args.model_rdm_dist_metric], f)
+    pickle.dump([regression_results_df, args.eeg_rdm_dist_metric, args.model_rdm_dist_metric, rsquared_adjusted], f)
 
 with open(args.save_path + args.eeg_rdm_dist_metric + "_" + args.model_rdm_dist_metric + pkl_name, 'wb') as f:
     pickle.dump([rdm_statistics_df, args.eeg_rdm_dist_metric, args.model_rdm_dist_metric], f)
