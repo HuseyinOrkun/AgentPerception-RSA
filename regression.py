@@ -24,18 +24,19 @@ def regression(windowed_eeg_rdm_dict, model_rdm_dict, experiment_type, stimuli_t
 
     # Regression results as a list, will be converted to df
     regression_results_list = []
-
+    r_squares = []
     # For each time window and, get the mean rdm across subjects, use OLS and get each beta coefficient and
     # statistic values
     for time_wind, eeg_rdm in windowed_eeg_rdm_dict.items():
         results = OLS(np.mean(eeg_rdm, 0), regressor_matrix).fit()
+        r_squares.append(results.rsquared_adj)
         for i, model in enumerate(models):
             temp = [experiment_type, stimuli_type, electrode_region, model, time_wind[0]]
             temp.extend([results.params[i], results.tvalues[i], results.pvalues[i]])
             temp.extend(results.conf_int().tolist()[i])
             regression_results_list.append(temp)
 
-    return regression_results_list
+    return regression_results_list, r_squares
 
 
 def vif_analysis(model_rdm_dict, save_path, thresh=5):
