@@ -132,7 +132,7 @@ for electrode_region in electrode_regions:
     else:
 
         # Dictionary where time windows are keys and EEG rdm data is value. Each EEG rdm data is
-        # n_conditions x n_channels x n_subjects. Must be the same dicitonary for all iterations of the for loop below
+        # n_subjects x 276.
         windowed_eeg_rdm_dict = defaultdict(list)
 
         # For all subjects do
