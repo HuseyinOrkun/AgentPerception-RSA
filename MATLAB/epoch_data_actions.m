@@ -101,7 +101,17 @@ for k=1:length(folders)
         % Store the original EEG data in dataset number 0 
         [ALLEEG, EEG, CURRENTSET] = eeg_store( ALLEEG, EEG, 0 );
         orig_EEG = eeg_checkset( EEG );
-
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Interpolate electrode Fp2 (electrode 30)
+        EEG = pop_interp(EEG, [30], 'spherical');
+        
+        % Store the new interpolated dataset (set 1)
+        % Updated the preceding dataset numbers (e.g. prev. set 1 is now set 2)
+        new_setname = strcat(original_set_file_name, '_Fp2_interpolated.set');
+        [ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname', new_setname, 'gui','off');
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
 		for region_index=1:length(brain_regions)
 
 			save_path = strcat(subj_folder_path, char(brain_regions(region_index)),'/');
@@ -134,12 +144,12 @@ for k=1:length(folders)
 
 					% Epoching
 					EEG = pop_epoch( orig_EEG, epochs, [-0.2  0.6], 'newname', strcat('subj', subj_no ,'_epochs_', title), 'epochinfo', 'yes');
-					[ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'savenew',strcat(save_path, 'steps/subj', subj_no , '_', title, '_step1_epchs.set'),'overwrite','on','gui','off'); 
+					[ALLEEG, EEG, CURRENTSET] = pop_newset(ALLEEG, EEG, 2,'savenew',strcat(save_path, 'steps/subj', subj_no , '_', title, '_step1_epchs.set'),'overwrite','on','gui','off'); 
 					EEG = eeg_checkset( EEG );
 
 					% Baseline removal
 					EEG = pop_rmbase( EEG, [-200 0]);
-					[ALLEEG, EEG, ~] = pop_newset(ALLEEG, EEG, 2, 'savenew', strcat(save_path, 'steps/subj', subj_no , '_', title, '_step2_rem_bas.set'),'overwrite','on','gui','off'); 
+					[ALLEEG, EEG, ~] = pop_newset(ALLEEG, EEG, 3, 'savenew', strcat(save_path, 'steps/subj', subj_no , '_', title, '_step2_rem_bas.set'),'overwrite','on','gui','off'); 
 					EEG = eeg_checkset( EEG );
 
 					% Select channels
@@ -168,7 +178,7 @@ for k=1:length(folders)
 					end
 
 					EEG = pop_select( EEG,'channel', channels);
-					[ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3,'savenew',strcat(save_path, 'steps/subj', subj_no , '_', title, '_step3_chnl.set'),'overwrite','on','gui','off'); 
+					[ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4,'savenew',strcat(save_path, 'steps/subj', subj_no , '_', title, '_step3_chnl.set'),'overwrite','on','gui','off'); 
 					% Saving the data into a struct to be able to give a proper 
 					eeg_data.eeg_data = EEG.data;
 					eeg_data.subj_no = subj_no;
