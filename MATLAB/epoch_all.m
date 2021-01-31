@@ -86,7 +86,7 @@ epoch_actions;
 pth='/auto/data2/oelmas/EEG_AgentPerception_Prior/Still/';
 
 mode = 'still';
-exp_type = 'naive';
+exp_type = 'prior';
 key='ff';
 
 %Epochs for Prior still data
