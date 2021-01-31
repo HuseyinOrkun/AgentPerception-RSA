@@ -1,10 +1,3 @@
-close all;
-clear;
-clc;
-
-addpath('/auto/k2/oelmas/eeglab2019_1-2')
-eeglab;
-
 fprintf('File Name  File Path: \n');
 folders = dir(pth);
 
@@ -141,3 +134,4 @@ for k=1:length(folders)
 		end % brain regions
 	end
 end
+STUDY = []; CURRENTSTUDY = 0; ALLEEG = []; EEG=[]; CURRENTSET=[];

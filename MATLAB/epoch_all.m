@@ -1,4 +1,11 @@
-% Common in all experiment types (Naive / Prior) and stimulus presentation modes (Still / Video)
+clear;
+close all;
+clc;
+
+addpath('/auto/k2/oelmas/eeglab2019_1-2');
+eeglab;
+
+%% Common in all experiment types (Naive / Prior) and stimulus presentation modes (Still / Video)
 
 % Change accordingly
 extract_actions = true;
