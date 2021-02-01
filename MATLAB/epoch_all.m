@@ -46,7 +46,7 @@ mode = 'video';
 exp_type = 'naive';
 key='video';
 
-% Epochs for naive data
+% Epochs for naive video data
 robot = {'S101' 'S102' 'S103' 'S104' 'S105' 'S106' 'S107' 'S108'};
 android = {'S111' 'S112' 'S113'  'S114' 'S115' 'S116'  'S117' 'S118'};
 human = {'S121' 'S122' 'S123'  'S124' 'S125' 'S126'  'S127' 'S128'};
@@ -64,6 +64,16 @@ pth='/auto/data2/oelmas/EEG_AgentPerception_Naive/Still_FF/';
 mode = 'still';
 exp_type = 'naive';
 key='ff';
+
+% Epochs for still
+robot = {'S 51' 'S 52' 'S 53' 'S 54' 'S 55' 'S 56' 'S 57' 'S 58'};
+android = {'S 61' 'S 62' 'S 63'  'S 64' 'S 65' 'S 66'  'S 67' 'S 68'};
+human = {'S 71' 'S 72' 'S 73'  'S 74' 'S 75' 'S 76'  'S 77' 'S 78'};
+agent_list = containers.Map;
+agent_list('robot') = robot;
+agent_list('android') = android;
+agent_list('human') = human;
+
 
 epoch_actions;
 
@@ -96,7 +106,7 @@ mode = 'still';
 exp_type = 'prior';
 key='ff';
 
-%Epochs for Prior still data
+%Epochs for still data
 robot = {'S 51' 'S 52' 'S 53' 'S 54' 'S 55' 'S 56' 'S 57' 'S 58'};
 android = {'S 61' 'S 62' 'S 63'  'S 64' 'S 65' 'S 66'  'S 67' 'S 68'};
 human = {'S 71' 'S 72' 'S 73'  'S 74' 'S 75' 'S 76'  'S 77' 'S 78'};
