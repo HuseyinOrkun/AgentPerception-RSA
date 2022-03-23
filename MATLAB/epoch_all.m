@@ -55,7 +55,7 @@ agent_list('robot') = robot;
 agent_list('android') = android;
 agent_list('human') = human;
 
-epoch_actions;
+%epoch_actions;
 
 %%
 % Naive Still
